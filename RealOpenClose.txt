@@ -1,10 +1,19 @@
 //@version=6
 indicator("RealOpenClose", overlay=true)
 
+enum DotSize
+    auto = "Auto"
+    tiny = "Tiny"
+    small = "Small"
+    normal = "Normal"
+    large = "Large"
+    huge = "Huge"
+
 showRealOpen = input.bool(true, "Show Real Open")
 realOpenColor = input.color(color.white, "Real Open Color")
 showRealClose = input.bool(true, "Show Real Close")
 realCloseColor = input.color(color.fuchsia, "Real Close Color")
+DotSize i_dot_size = input.enum(DotSize.tiny, "Dot Size")
 
 realPrice = ticker.new(prefix=syminfo.prefix, ticker=syminfo.ticker)
 [realOpen, realHigh, realLow, realClose] = request.security(realPrice, timeframe.period, [open, high, low, close])
@@ -12,5 +21,32 @@ realPrice = ticker.new(prefix=syminfo.prefix, ticker=syminfo.ticker)
 displayRealOpen = showRealOpen ? display.all : display.none
 displayRealClose = showRealClose ? display.all : display.none
 
-plotchar(series=chart.is_heikinashi ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.auto, force_overlay=true, display=displayRealOpen)
-plotchar(series=chart.is_heikinashi ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.auto, force_overlay=true, display=displayRealClose)
+dot_size(DotSize value) =>
+    result = switch value
+        DotSize.auto => size.auto
+        DotSize.tiny => size.tiny
+        DotSize.small => size.small
+        DotSize.normal => size.normal
+        DotSize.large => size.large
+        DotSize.huge => size.huge
+        => size.auto
+    result
+
+// auto
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.auto ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.auto, force_overlay=true, display=displayRealOpen)
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.auto ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.auto, force_overlay=true, display=displayRealClose)
+// tiny
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.tiny ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.tiny, force_overlay=true, display=displayRealOpen)
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.tiny ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.tiny, force_overlay=true, display=displayRealClose)
+// small
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.small ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.small, force_overlay=true, display=displayRealOpen)
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.small ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.small, force_overlay=true, display=displayRealClose)
+// normal
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.normal ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.normal, force_overlay=true, display=displayRealOpen)
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.normal ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.normal, force_overlay=true, display=displayRealClose)
+// large
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.large ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.large, force_overlay=true, display=displayRealOpen)
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.large ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.large, force_overlay=true, display=displayRealClose)
+// huge
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.huge ? realOpen : na, title="Real Open Dots", location=location.absolute, color=realOpenColor, editable=false, char="•", size=size.huge, force_overlay=true, display=displayRealOpen)
+plotchar(series=chart.is_heikinashi and i_dot_size == DotSize.huge ? realClose : na, title="Real Close Dots", location=location.absolute, color=realCloseColor, editable=false, char="•", size=size.huge, force_overlay=true, display=displayRealClose)
