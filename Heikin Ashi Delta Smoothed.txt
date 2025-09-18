@@ -1,0 +1,21 @@
+//@version=6
+indicator("Heikin Ashi Delta Smoothed", overlay=false)
+
+i_smoothingLen = input.int(4, "Smoothing Length", minval=1)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Heikin-Ashi
+////////////////////////////////////////////////////////////////////////////////
+
+haTicker = ticker.heikinashi(syminfo.tickerid)
+[haOpen, haHigh, haLow, haClose] = request.security(haTicker, timeframe.period, [open, high, low, close])
+
+////////////////////////////////////////////////////////////////////////////////
+// Heikin-Ashi Delta Smoothed
+////////////////////////////////////////////////////////////////////////////////
+
+haDelta = haClose - haOpen
+haDeltaSmoothed = ta.sma(haDelta, i_smoothingLen)
+
+plot(haDeltaSmoothed, "Heikin Ashi Delta Smoothed", color.white)
