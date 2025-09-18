@@ -1,21 +1,76 @@
 //@version=6
 indicator("Heikin Ashi Dots", overlay=false)
 
-trendDirectionPos = input.int(50, "Display Level")
-showLabel = input.bool(true, "Show Label")
+format_timeframe_period(string period) =>
+    string result = period
+    string multiplier_str = str.match(period, "^\\d+")
+    if str.endswith(period, "M")
+        // Months
+        result := (multiplier_str == "1") ? "M" : period
+    else if str.endswith(period, "W")
+        // Weeks
+        result := (multiplier_str == "1") ? "W" : period
+    else if str.endswith(period, "D")
+        // Days
+        result := (multiplier_str == "1") ? "D" : period
+    else if str.endswith(period, "S")
+        // Seconds
+        result := multiplier_str + "s"
+    else if str.endswith(period, "T")
+        // Ticks
+        result := multiplier_str + "t"
+    else if str.length(multiplier_str) == str.length(period)
+        // Minutes - Check for exact hours
+        int hours = int(str.tonumber(multiplier_str) / 60)
+        if str.tostring(hours * 60) == multiplier_str
+            // Format as hours
+            result := str.tostring(hours) + "H"
+        else
+            // Format as pure minutes
+            result := multiplier_str + "m"
+    result
+
+enum DotSize
+    auto = "Auto"
+    tiny = "Tiny"
+    small = "Small"
+    normal = "Normal"
+    large = "Large"
+    huge = "Huge"
+
+i_timeframe = input.timeframe("", title="Timeframe")
+DotSize i_dot_size = input.enum(DotSize.tiny, "Dot Size")
+i_trendDirectionPos = input.int(50, "Display Level")
+i_showLabel = input.bool(true, "Show Label", inline="label")
+i_labelColor = input.color(color.rgb(150, 150, 150), "", inline="label", active=i_showLabel)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Heikin-Ashi
 ////////////////////////////////////////////////////////////////////////////////
 
 haTicker = ticker.heikinashi(syminfo.tickerid)
-[haOpen, haHigh, haLow, haClose] = request.security(haTicker, timeframe.period, [open, high, low, close])
+[haOpen, haHigh, haLow, haClose] = request.security(haTicker, i_timeframe, [open, high, low, close])
+
+////////////////////////////////////////////////////////////////////////////////
+// Heikin-Ashi Dots
+////////////////////////////////////////////////////////////////////////////////
 
 prevBarTrend = haClose[1] >= haOpen[1] ? 1 : -1
 currBarTrend = haClose[0] >= haOpen[0] ? 1 : -1
 trendDirectionColor = (currBarTrend == prevBarTrend and currBarTrend > 0) ? color.green : ((currBarTrend == prevBarTrend and currBarTrend < 0) ? color.red : color.yellow)
-plotshape(trendDirectionPos, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.tiny, display = display.pane)
+// Auto
+plotshape(i_dot_size == DotSize.auto ? i_trendDirectionPos : na, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.auto, display = display.pane)
+// Tiny
+plotshape(i_dot_size == DotSize.tiny ? i_trendDirectionPos : na, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.tiny, display = display.pane)
+// Small
+plotshape(i_dot_size == DotSize.small ? i_trendDirectionPos : na, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.small, display = display.pane)
+// Normal
+plotshape(i_dot_size == DotSize.normal ? i_trendDirectionPos : na, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.normal, display = display.pane)
+// Large
+plotshape(i_dot_size == DotSize.large ? i_trendDirectionPos : na, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.large, display = display.pane)
+// Huge
+plotshape(i_dot_size == DotSize.huge ? i_trendDirectionPos : na, title="Heikin Ashi Dots", style = shape.circle, location = location.absolute, color = trendDirectionColor, size = size.huge, display = display.pane)
 
-if (showLabel and barstate.islast)
-    var label lblHATrendDirectionDots = label.new(na, trendDirectionPos, "Heikin-Ashi", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, color.rgb(150, 150, 150), size.small, text.align_left, tooltip="Heikin-Ashi Trend Direction")
+if (i_showLabel and barstate.islast)
+    var label lblHATrendDirectionDots = label.new(na, i_trendDirectionPos, "Heikin Ashi" + (str.length(i_timeframe) > 0 ? " (" + format_timeframe_period(i_timeframe) + ")" : ""), xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_labelColor, size.small, text.align_left, tooltip="Heikin Ashi Trend Direction")
     label.set_x(lblHATrendDirectionDots, bar_index + 1)

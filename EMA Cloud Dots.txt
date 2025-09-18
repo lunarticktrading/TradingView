@@ -1,21 +1,76 @@
 //@version=6
 indicator("EMA Cloud Dots", overlay=false)
 
+format_timeframe_period(string period) =>
+    string result = period
+    string multiplier_str = str.match(period, "^\\d+")
+    if str.endswith(period, "M")
+        // Months
+        result := (multiplier_str == "1") ? "M" : period
+    else if str.endswith(period, "W")
+        // Weeks
+        result := (multiplier_str == "1") ? "W" : period
+    else if str.endswith(period, "D")
+        // Days
+        result := (multiplier_str == "1") ? "D" : period
+    else if str.endswith(period, "S")
+        // Seconds
+        result := multiplier_str + "s"
+    else if str.endswith(period, "T")
+        // Ticks
+        result := multiplier_str + "t"
+    else if str.length(multiplier_str) == str.length(period)
+        // Minutes - Check for exact hours
+        int hours = int(str.tonumber(multiplier_str) / 60)
+        if str.tostring(hours * 60) == multiplier_str
+            // Format as hours
+            result := str.tostring(hours) + "H"
+        else
+            // Format as pure minutes
+            result := multiplier_str + "m"
+    result
+
+enum DotSize
+    auto = "Auto"
+    tiny = "Tiny"
+    small = "Small"
+    normal = "Normal"
+    large = "Large"
+    huge = "Huge"
+
+i_emaFastLen = input.int(9, "Fast EMA Length", minval=1)
+i_emaSlowLen = input.int(21, "Slow EMA Length", minval=1)
+i_timeframe = input.timeframe("", title="Timeframe")
+DotSize i_dot_size = input.enum(DotSize.auto, "Dot Size")
+i_emaCloudTrendDirectionPos = input.int(50, "Display Level")
+i_showLabel = input.bool(true, "Show Label", inline="label")
+i_labelColor = input.color(color.rgb(150, 150, 150), "", inline="label", active=i_showLabel)
+
 ////////////////////////////////////////////////////////////////////////////////
 // EMA Cloud
 ////////////////////////////////////////////////////////////////////////////////
 
-emaFastLen = input.int(9, "Fast EMA Length", minval=1)
-emaSlowLen = input.int(21, "Slow EMA Length", minval=1)
-emaCloudTrendDirectionPos = input.int(50, "Display Level")
-showLabel = input.bool(true, "Show Label")
-
-emaFast = ta.ema(close, emaFastLen)
-emaSlow = ta.ema(close, emaSlowLen)
+[emaFast, emaSlow] = request.security("", i_timeframe, [ta.ema(close, i_emaFastLen), ta.ema(close, i_emaSlowLen)])
 
 emaCloudTrendDirectionColor = (emaFast > emaSlow) ? color.green : (emaFast < emaSlow) ? color.red : na
-plotshape(emaCloudTrendDirectionPos, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.tiny, display=display.pane)
 
-if (showLabel and barstate.islast)
-    var label lblEMACloudTrendDirectionDots = label.new(na, emaCloudTrendDirectionPos, "EMA Cloud", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, color.rgb(150, 150, 150), size.small, text.align_left, tooltip="EMA Cloud Trend Direction")
+////////////////////////////////////////////////////////////////////////////////
+// EMA Cloud Dots
+////////////////////////////////////////////////////////////////////////////////
+
+// Auto
+plotshape(i_dot_size == DotSize.auto ? i_emaCloudTrendDirectionPos : na, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.auto, display=display.pane)
+// Tiny
+plotshape(i_dot_size == DotSize.tiny ? i_emaCloudTrendDirectionPos : na, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.tiny, display=display.pane)
+// Small
+plotshape(i_dot_size == DotSize.small ? i_emaCloudTrendDirectionPos : na, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.small, display=display.pane)
+// Normal
+plotshape(i_dot_size == DotSize.normal ? i_emaCloudTrendDirectionPos : na, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.normal, display=display.pane)
+// Large
+plotshape(i_dot_size == DotSize.large ? i_emaCloudTrendDirectionPos : na, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.large, display=display.pane)
+// Huge
+plotshape(i_dot_size == DotSize.huge ? i_emaCloudTrendDirectionPos : na, title="EMA Cloud Dots", style=shape.circle, location=location.absolute, color=emaCloudTrendDirectionColor, size=size.huge, display=display.pane)
+
+if (i_showLabel and barstate.islast)
+    var label lblEMACloudTrendDirectionDots = label.new(na, i_emaCloudTrendDirectionPos, "EMA Cloud" + (str.length(i_timeframe) > 0 ? " (" + format_timeframe_period(i_timeframe) + ")" : ""), xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_labelColor, size.small, text.align_left, tooltip="EMA Cloud Trend Direction")
     label.set_x(lblEMACloudTrendDirectionDots, bar_index + 1)
