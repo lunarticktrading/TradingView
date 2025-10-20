@@ -1,0 +1,41 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("Engulfing Off BB", overlay = true)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////
+
+i_bb_series = input.source(close, "Source", group = "Bollinger Bands")
+i_bb_length = input.int(20, "Length", minval = 1, maxval = 999, group = "Bollinger Bands")
+i_bb_mult = input.float(2.0, "Multiplier", minval = 0, step = 0.1, group = "Bollinger Bands")
+
+i_bullish_color = input.color(#00c3ff, "Bullish", group = "Engulfing Candles")
+i_bearish_color = input.color(#df1878, "Bearish", group = "Engulfing Candles")
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Calculations
+////////////////////////////////////////////////////////////////////////////////
+
+[bb_middle, bb_upper, bb_lower] = ta.bb(i_bb_series, i_bb_length, i_bb_mult)
+
+is_touching_upper_bb = (high >= bb_upper) and (low <= bb_upper)
+is_touching_lower_bb = (high >= bb_lower) and (low <= bb_lower)
+
+is_bullish_engulfing = (close >= open) and (close[1] <= open[1]) and ((close - open) > (open[1] - close[1]))
+is_bearish_engulfing = (close <= open) and (close[1] >= open[1]) and ((open - close) > (close[1] - open[1]))
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Plotting
+////////////////////////////////////////////////////////////////////////////////
+
+plot(bb_upper, "BB Upper", #512da8, 1, plot.style_line, linestyle = plot.linestyle_dotted)
+plot(bb_middle, "BB Middle", color.olive, 1, plot.style_line, linestyle = plot.linestyle_dashed, display = display.none)
+plot(bb_lower, "BB Lower", #512da8, 1, plot.style_line, linestyle = plot.linestyle_dotted)
+
+barcolor(is_touching_lower_bb and is_bullish_engulfing ? i_bullish_color : (is_touching_upper_bb and is_bearish_engulfing ? i_bearish_color : na))
