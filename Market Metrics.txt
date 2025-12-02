@@ -1,0 +1,187 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("Market Metrics", overlay = true)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.0
+// - Added ATR volatility warnings
+// - Added ADX trend warnings
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var ATR_GROUP = "ATR"
+var ADX_GROUP = "ADX"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+var ATR_COLORS = "ATR_COLORS"
+var ATR_LOW_VOL = "ATR_LOW_VOL"
+var ATR_HIGH_VOL = "ATR_HIGH_VOL"
+var ATR_EXTREME_VOL = "ATR_EXTREME_VOL"
+
+var ADX_COLORS = "ADX_COLORS"
+var ADX_TREND = "ADX_TREND"
+var ADX_STRONG_TREND = "ADX_STRONG_TREND"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool i_show_atr = input.bool(true, "Show ATR", display = display.none, group = ATR_GROUP)
+int i_atr_length = input.int(14, "ATR Length", display = display.none, group = ATR_GROUP, active = i_show_atr)
+int i_atr_bars_ago = input.int(1, "Use Value Bars Ago", minval=0, display = display.none, group = ATR_GROUP, active = i_show_atr)
+color i_atr_text_color = input.color(color.white, "Text/Background Colors", inline = ATR_COLORS, display = display.none, group = ATR_GROUP, active = i_show_atr)
+color i_atr_background_color = input.color(color.new(color.black, 100), "", inline = ATR_COLORS, display = display.none, group = ATR_GROUP, active = i_show_atr)
+
+bool i_atr_volatility_warnings = input.bool(true, "ATR Volatility Warnings", display = display.none, group = ATR_GROUP, active = i_show_atr, tooltip = "Display ATR values in various colors depending on the ATR value")
+float i_atr_low_vol_threshold = input.float(10.0, "Low Volatility", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings, tooltip = "Used when ATR value is below the specified Low Volatility threshold")
+color i_atr_low_vol_text_color = input.color(color.gray, "", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+color i_atr_low_vol_background_color = input.color(color.new(color.black, 100), "", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+float i_atr_high_vol_threshold = input.float(30.0, "High Volatility", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings, tooltip = "Used when ATR value is above the specified High Volatility threshold but below the specified Extreme Volatility threshold")
+color i_atr_high_vol_text_color = input.color(color.red, "", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+color i_atr_high_vol_background_color = input.color(color.yellow, "", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+float i_atr_extreme_vol_threshold = input.float(50.0, "Extreme Volatility", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings, tooltip = "Used when ATR value is above the specified Extreme Volatility threshold")
+color i_atr_extreme_vol_text_color = input.color(color.yellow, "", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+color i_atr_extreme_vol_background_color = input.color(color.red, "", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+
+bool i_show_adx = input.bool(true, "Show ADX", display = display.none, group = ADX_GROUP)
+int i_adx_length = input.int(14, "ADX Length", display = display.none, group = ADX_GROUP, active = i_show_adx)
+int i_adx_smoothing = input.int(14, "ADX Smoothing", display = display.none, group = ADX_GROUP, active = i_show_adx)
+int i_adx_bars_ago = input.int(1, "Use Value Bars Ago", minval=0, display = display.none, group = ADX_GROUP, active = i_show_adx)
+color i_adx_text_color = input.color(color.white, "Text/Background Colors", inline = ADX_COLORS, display = display.none, group = ADX_GROUP, active = i_show_adx)
+color i_adx_background_color = input.color(color.new(color.black, 100), "", inline = ADX_COLORS, display = display.none, group = ADX_GROUP, active = i_show_adx)
+
+bool i_adx_trend_warnings = input.bool(true, "ADX Trend Warnings", display = display.none, group = ADX_GROUP, active = i_show_adx, tooltip = "Display ADX values in various colors depending on the ADX value")
+float i_adx_trend_threshold = input.float(20.0, "Trend", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings, tooltip = "Used when ADX value is above the specified Trend threshold but below the specified Strong Trend threshold")
+color i_adx_trend_text_color = input.color(color.white, "", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
+color i_adx_trend_background_color = input.color(#4a148c, "", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
+float i_adx_strong_trend_threshold = input.float(50.0, "Strong Trend", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings, tooltip = "Used when ADX value is above the specified Strong Trend threshold")
+color i_adx_strong_trend_text_color = input.color(color.white, "", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
+color i_adx_strong_trend_background_color = input.color(#9c27b0, "", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
+
+
+enum Position
+    top_left = "Top Left"
+    top_center = "Top Center"
+    top_right = "Top Right"
+    middle_left = "Middle Left"
+    middle_center = "Middle Center"
+    middle_right = "Middle Right"
+    bottom_left = "Bottom Left"
+    bottom_center = "Bottom Center"
+    bottom_right = "Bottom Right"
+
+Position i_tbl_position_raw = input.enum(Position.top_right, "Position", display = display.none, group = DISPLAY_GROUP)
+var string i_tbl_position = switch i_tbl_position_raw
+    Position.top_left => position.top_left
+    Position.top_center => position.top_center
+    Position.top_right => position.top_right
+    Position.middle_left => position.middle_left
+    Position.middle_center => position.middle_center
+    Position.middle_right => position.middle_right
+    Position.bottom_left => position.bottom_left
+    Position.bottom_center => position.bottom_center
+    Position.bottom_right => position.bottom_right
+    => position.top_right
+
+color i_tbl_border_color = input.color(color.new(color.white, 100), "Border Color", display = display.none, group = DISPLAY_GROUP)
+int i_tbl_border_width = input.int(1, "Border Width", minval = 1, display = display.none, group = DISPLAY_GROUP)
+
+enum VersionEnum
+    version = "v1.1.0"
+    
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+get_tbl_rows() =>
+    (i_show_atr ? 1 : 0) + (i_show_adx ? 1 : 0)
+
+get_cell_alignment(Position pos) =>
+    switch pos
+        Position.top_right => text.align_right
+        Position.middle_right => text.align_right
+        Position.bottom_right => text.align_right
+        Position.top_left => text.align_left
+        Position.middle_left => text.align_left
+        Position.bottom_left => text.align_left
+        Position.top_center => text.align_center
+        Position.middle_center => text.align_center
+        Position.bottom_center => text.align_center
+        => text.align_right
+
+get_atr_colors(float atr) =>
+    color text_color = i_atr_text_color
+    color background_color = i_atr_background_color
+    if i_atr_volatility_warnings
+        if atr > i_atr_extreme_vol_threshold
+            text_color := i_atr_extreme_vol_text_color
+            background_color := i_atr_extreme_vol_background_color
+        else if atr > i_atr_high_vol_threshold
+            text_color := i_atr_high_vol_text_color
+            background_color := i_atr_high_vol_background_color
+        else if atr < i_atr_low_vol_threshold
+            text_color := i_atr_low_vol_text_color
+            background_color := i_atr_low_vol_background_color
+    [text_color, background_color]
+
+get_adx_colors(float adx) =>
+    color text_color = i_adx_text_color
+    color background_color = i_adx_background_color
+    if i_adx_trend_warnings
+        if adx > i_adx_strong_trend_threshold
+            text_color := i_adx_strong_trend_text_color
+            background_color := i_adx_strong_trend_background_color
+        else if adx > i_adx_trend_threshold
+            text_color := i_adx_trend_text_color
+            background_color := i_adx_trend_background_color
+    [text_color, background_color]
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Calculations
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+atr = ta.atr(i_atr_length)
+atr_rounded = math.round_to_mintick(atr)
+[diplus, diminus, adx] = ta.dmi(i_adx_length, i_adx_smoothing)
+
+[atr_text_color, atr_background_color] = get_atr_colors(atr_rounded[i_atr_bars_ago])
+[adx_text_color, adx_background_color] = get_adx_colors(adx[i_adx_bars_ago])
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Display
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var tbl = table.new(i_tbl_position, 1, get_tbl_rows(), color.new(color.black, 100), i_tbl_border_color, i_tbl_border_width, i_tbl_border_color, i_tbl_border_width)
+if get_tbl_rows() > 0
+    curr_row = 0
+    if i_show_atr
+        tbl.cell_set_text(0, curr_row, "ATR: " + str.tostring(atr_rounded[i_atr_bars_ago]) + "P, " + str.tostring(math.ceil(atr_rounded[i_atr_bars_ago] / syminfo.mintick)) + "T")
+        tbl.cell_set_text_color(0, curr_row, atr_text_color)
+        tbl.cell_set_bgcolor(0, curr_row, atr_background_color)
+        tbl.cell_set_text_halign(0, curr_row, get_cell_alignment(i_tbl_position_raw))
+        tbl.cell_set_tooltip(0, curr_row, "ATR(" + str.tostring(i_atr_length) + ")")
+        curr_row := curr_row + 1
+    if i_show_adx
+        tbl.cell_set_text(0, curr_row, "ADX: " + str.tostring(math.round(adx[i_adx_bars_ago], 1)))
+        tbl.cell_set_text_color(0, curr_row, adx_text_color)
+        tbl.cell_set_bgcolor(0, curr_row, adx_background_color)
+        tbl.cell_set_text_halign(0, curr_row, get_cell_alignment(i_tbl_position_raw))
+        tbl.cell_set_tooltip(0, curr_row, "ADX(" + str.tostring(i_adx_length) + ", " + str.tostring(i_adx_smoothing) + ")")
+        curr_row := curr_row + 1
