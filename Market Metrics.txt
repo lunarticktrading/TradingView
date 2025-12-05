@@ -7,6 +7,8 @@ indicator("Market Metrics", overlay = true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.1
+// - Improved some settings
 // v1.1.0
 // - Added ATR volatility warnings
 // - Added ADX trend warnings
@@ -40,35 +42,35 @@ var ADX_STRONG_TREND = "ADX_STRONG_TREND"
 
 bool i_show_atr = input.bool(true, "Show ATR", display = display.none, group = ATR_GROUP)
 int i_atr_length = input.int(14, "ATR Length", display = display.none, group = ATR_GROUP, active = i_show_atr)
-int i_atr_bars_ago = input.int(1, "Use Value Bars Ago", minval=0, display = display.none, group = ATR_GROUP, active = i_show_atr)
+int i_atr_reference_bars_back = input.int(1, "Reference Bars Back", minval=0, display = display.none, group = ATR_GROUP, active = i_show_atr)
 color i_atr_text_color = input.color(color.white, "Text/Background Colors", inline = ATR_COLORS, display = display.none, group = ATR_GROUP, active = i_show_atr)
 color i_atr_background_color = input.color(color.new(color.black, 100), "", inline = ATR_COLORS, display = display.none, group = ATR_GROUP, active = i_show_atr)
 
-bool i_atr_volatility_warnings = input.bool(true, "ATR Volatility Warnings", display = display.none, group = ATR_GROUP, active = i_show_atr, tooltip = "Display ATR values in various colors depending on the ATR value")
-float i_atr_low_vol_threshold = input.float(10.0, "Low Volatility", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings, tooltip = "Used when ATR value is below the specified Low Volatility threshold")
-color i_atr_low_vol_text_color = input.color(color.gray, "", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
-color i_atr_low_vol_background_color = input.color(color.new(color.black, 100), "", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
-float i_atr_high_vol_threshold = input.float(30.0, "High Volatility", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings, tooltip = "Used when ATR value is above the specified High Volatility threshold but below the specified Extreme Volatility threshold")
-color i_atr_high_vol_text_color = input.color(color.red, "", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
-color i_atr_high_vol_background_color = input.color(color.yellow, "", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
-float i_atr_extreme_vol_threshold = input.float(50.0, "Extreme Volatility", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings, tooltip = "Used when ATR value is above the specified Extreme Volatility threshold")
-color i_atr_extreme_vol_text_color = input.color(color.yellow, "", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
-color i_atr_extreme_vol_background_color = input.color(color.red, "", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_volatility_warnings)
+bool i_atr_show_volatility_warnings = input.bool(true, "Show Volatility Warnings", display = display.none, group = ATR_GROUP, active = i_show_atr, tooltip = "Display ATR values in various colors depending on the ATR value")
+float i_atr_low_vol_threshold = input.float(10.0, "Low Volatility", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings, tooltip = "Used when ATR value is below the specified Low Volatility threshold")
+color i_atr_low_vol_text_color = input.color(color.gray, "", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings)
+color i_atr_low_vol_background_color = input.color(color.new(color.black, 100), "", inline = ATR_LOW_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings)
+float i_atr_high_vol_threshold = input.float(30.0, "High Volatility", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings, tooltip = "Used when ATR value is above the specified High Volatility threshold but below the specified Extreme Volatility threshold")
+color i_atr_high_vol_text_color = input.color(color.red, "", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings)
+color i_atr_high_vol_background_color = input.color(color.yellow, "", inline = ATR_HIGH_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings)
+float i_atr_extreme_vol_threshold = input.float(50.0, "Extreme Volatility", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings, tooltip = "Used when ATR value is above the specified Extreme Volatility threshold")
+color i_atr_extreme_vol_text_color = input.color(color.yellow, "", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings)
+color i_atr_extreme_vol_background_color = input.color(color.red, "", inline = ATR_EXTREME_VOL, display = display.none, group = ATR_GROUP, active = i_show_atr and i_atr_show_volatility_warnings)
 
 bool i_show_adx = input.bool(true, "Show ADX", display = display.none, group = ADX_GROUP)
 int i_adx_length = input.int(14, "ADX Length", display = display.none, group = ADX_GROUP, active = i_show_adx)
 int i_adx_smoothing = input.int(14, "ADX Smoothing", display = display.none, group = ADX_GROUP, active = i_show_adx)
-int i_adx_bars_ago = input.int(1, "Use Value Bars Ago", minval=0, display = display.none, group = ADX_GROUP, active = i_show_adx)
+int i_adx_reference_bars_back = input.int(1, "Reference Bars Back", minval=0, display = display.none, group = ADX_GROUP, active = i_show_adx)
 color i_adx_text_color = input.color(color.white, "Text/Background Colors", inline = ADX_COLORS, display = display.none, group = ADX_GROUP, active = i_show_adx)
 color i_adx_background_color = input.color(color.new(color.black, 100), "", inline = ADX_COLORS, display = display.none, group = ADX_GROUP, active = i_show_adx)
 
-bool i_adx_trend_warnings = input.bool(true, "ADX Trend Warnings", display = display.none, group = ADX_GROUP, active = i_show_adx, tooltip = "Display ADX values in various colors depending on the ADX value")
-float i_adx_trend_threshold = input.float(20.0, "Trend", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings, tooltip = "Used when ADX value is above the specified Trend threshold but below the specified Strong Trend threshold")
-color i_adx_trend_text_color = input.color(color.white, "", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
-color i_adx_trend_background_color = input.color(#4a148c, "", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
-float i_adx_strong_trend_threshold = input.float(50.0, "Strong Trend", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings, tooltip = "Used when ADX value is above the specified Strong Trend threshold")
-color i_adx_strong_trend_text_color = input.color(color.white, "", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
-color i_adx_strong_trend_background_color = input.color(#9c27b0, "", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_trend_warnings)
+bool i_adx_show_trend_warnings = input.bool(true, "ADX Trend Warnings", display = display.none, group = ADX_GROUP, active = i_show_adx, tooltip = "Display ADX values in various colors depending on the ADX value")
+float i_adx_trend_threshold = input.float(20.0, "Trend", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_show_trend_warnings, tooltip = "Used when ADX value is above the specified Trend threshold but below the specified Strong Trend threshold")
+color i_adx_trend_text_color = input.color(color.white, "", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_show_trend_warnings)
+color i_adx_trend_background_color = input.color(#4a148c, "", inline = ADX_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_show_trend_warnings)
+float i_adx_strong_trend_threshold = input.float(50.0, "Strong Trend", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_show_trend_warnings, tooltip = "Used when ADX value is above the specified Strong Trend threshold")
+color i_adx_strong_trend_text_color = input.color(color.white, "", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_show_trend_warnings)
+color i_adx_strong_trend_background_color = input.color(#9c27b0, "", inline = ADX_STRONG_TREND, display = display.none, group = ADX_GROUP, active = i_show_adx and i_adx_show_trend_warnings)
 
 
 enum Position
@@ -99,7 +101,7 @@ color i_tbl_border_color = input.color(color.new(color.white, 100), "Border Colo
 int i_tbl_border_width = input.int(1, "Border Width", minval = 1, display = display.none, group = DISPLAY_GROUP)
 
 enum VersionEnum
-    version = "v1.1.0"
+    version = "v1.1.1"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -127,7 +129,7 @@ get_cell_alignment(Position pos) =>
 get_atr_colors(float atr) =>
     color text_color = i_atr_text_color
     color background_color = i_atr_background_color
-    if i_atr_volatility_warnings
+    if i_atr_show_volatility_warnings
         if atr > i_atr_extreme_vol_threshold
             text_color := i_atr_extreme_vol_text_color
             background_color := i_atr_extreme_vol_background_color
@@ -142,7 +144,7 @@ get_atr_colors(float atr) =>
 get_adx_colors(float adx) =>
     color text_color = i_adx_text_color
     color background_color = i_adx_background_color
-    if i_adx_trend_warnings
+    if i_adx_show_trend_warnings
         if adx > i_adx_strong_trend_threshold
             text_color := i_adx_strong_trend_text_color
             background_color := i_adx_strong_trend_background_color
@@ -160,8 +162,8 @@ atr = ta.atr(i_atr_length)
 atr_rounded = math.round_to_mintick(atr)
 [diplus, diminus, adx] = ta.dmi(i_adx_length, i_adx_smoothing)
 
-[atr_text_color, atr_background_color] = get_atr_colors(atr_rounded[i_atr_bars_ago])
-[adx_text_color, adx_background_color] = get_adx_colors(adx[i_adx_bars_ago])
+[atr_text_color, atr_background_color] = get_atr_colors(atr_rounded[i_atr_reference_bars_back])
+[adx_text_color, adx_background_color] = get_adx_colors(adx[i_adx_reference_bars_back])
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,14 +174,14 @@ var tbl = table.new(i_tbl_position, 1, get_tbl_rows(), color.new(color.black, 10
 if get_tbl_rows() > 0
     curr_row = 0
     if i_show_atr
-        tbl.cell_set_text(0, curr_row, "ATR: " + str.tostring(atr_rounded[i_atr_bars_ago]) + "P, " + str.tostring(math.ceil(atr_rounded[i_atr_bars_ago] / syminfo.mintick)) + "T")
+        tbl.cell_set_text(0, curr_row, "ATR: " + str.tostring(atr_rounded[i_atr_reference_bars_back]) + "P, " + str.tostring(math.ceil(atr_rounded[i_atr_reference_bars_back] / syminfo.mintick)) + "T")
         tbl.cell_set_text_color(0, curr_row, atr_text_color)
         tbl.cell_set_bgcolor(0, curr_row, atr_background_color)
         tbl.cell_set_text_halign(0, curr_row, get_cell_alignment(i_tbl_position_raw))
         tbl.cell_set_tooltip(0, curr_row, "ATR(" + str.tostring(i_atr_length) + ")")
         curr_row := curr_row + 1
     if i_show_adx
-        tbl.cell_set_text(0, curr_row, "ADX: " + str.tostring(math.round(adx[i_adx_bars_ago], 1)))
+        tbl.cell_set_text(0, curr_row, "ADX: " + str.tostring(math.round(adx[i_adx_reference_bars_back], 1)))
         tbl.cell_set_text_color(0, curr_row, adx_text_color)
         tbl.cell_set_bgcolor(0, curr_row, adx_background_color)
         tbl.cell_set_text_halign(0, curr_row, get_cell_alignment(i_tbl_position_raw))
