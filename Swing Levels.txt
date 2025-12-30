@@ -1,0 +1,58 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("Swing Levels", overlay = true)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Replicates the Swing indicator from NinjaTrader.
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////
+
+i_length = input.int(5, "Length", minval = 0)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Calculations
+////////////////////////////////////////////////////////////////////////////////
+
+// NOTE: The pivothigh/pivotlow functions return a value once the pivot has confirmed,
+// and we cannot back-fill plot values in pinescript, so we have to work ahead and then
+// display plot values with a negative offset, so that they start displaying at the actual pivot.
+// We also keep track of when the price intersects the pivot line, so we know when to stop plotting.
+
+pivothigh = ta.pivothigh(i_length, i_length)
+var int last_pivothigh_index = na
+if not na(pivothigh)
+    last_pivothigh_index := na
+else
+    pivothigh := (na(last_pivothigh_index) or bar_index < last_pivothigh_index) ? pivothigh[1] : na
+    if high > pivothigh and na(last_pivothigh_index)
+        last_pivothigh_index := bar_index + i_length
+
+
+pivotlow = ta.pivotlow(i_length, i_length)
+var int last_pivotlow_index = na
+if not na(pivotlow)
+    last_pivotlow_index := na
+else
+    pivotlow := (na(last_pivotlow_index) or bar_index < last_pivotlow_index) ? pivotlow[1] : na
+    if low < pivotlow and na(last_pivotlow_index)
+        last_pivotlow_index := bar_index + i_length
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Plots
+////////////////////////////////////////////////////////////////////////////////
+
+plot(pivothigh, "Swing High", color.aqua, 2, plot.style_circles, offset = -i_length)
+plot(pivotlow, "Swing Low", color.yellow, 2, plot.style_circles, offset = -i_length)
