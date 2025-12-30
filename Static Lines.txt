@@ -1,0 +1,121 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("Static Lines", overlay = true)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// This indicator shows the "Static Lines" as used by Bob Anderson in his Goldline/Redline strategy.
+// https://youtu.be/KkZ42sWK9ck?si=vlbSnwVf8TtriySm
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////
+
+var PDO = "PDO"
+var PDH = "PDH"
+var PDL = "PDL"
+var PDC = "PDC"
+var DO = "DO"
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////
+
+bool i_show_prev_daily_open = input.bool(true, "Previous Daily Open", inline = PDO)
+color i_prev_daily_open_color = input.color(color.blue, "", inline = PDO)
+
+bool i_show_prev_daily_high = input.bool(true, "Previous Daily High", inline = PDH)
+color i_prev_daily_high_color = input.color(color.green, "", inline = PDH)
+
+bool i_show_prev_daily_low = input.bool(true, "Previous Daily Low", inline = PDL)
+color i_prev_daily_low_color = input.color(color.red, "", inline = PDL)
+
+bool i_show_prev_daily_close = input.bool(true, "Previous Daily Close", inline = PDC)
+color i_prev_daily_close_color = input.color(color.gray, "", inline = PDC)
+
+bool i_show_daily_open = input.bool(true, "Daily Open", inline = DO)
+color i_daily_open_color = input.color(color.aqua, "", inline = DO)
+
+bool i_show_labels = input.bool(true, "Show Labels")
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Data Series
+////////////////////////////////////////////////////////////////////////////////
+
+varip float prev_daily_open = na
+varip float prev_daily_high = na
+varip float prev_daily_low = na
+varip float prev_daily_close = na
+varip float daily_open = na
+varip float daily_high = na
+varip float daily_low = na
+varip float daily_close = na
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Labels
+////////////////////////////////////////////////////////////////////////////////
+
+var label prev_daily_open_label = i_show_prev_daily_open and i_show_labels ? label.new(bar_index + 1, prev_daily_open, "PDO", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_prev_daily_open_color, size.normal, text.align_left, "Previous Daily Open") : na
+var label prev_daily_high_label = i_show_prev_daily_high and i_show_labels ? label.new(bar_index + 1, prev_daily_open, "PDH", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_prev_daily_high_color, size.normal, text.align_left, "Previous Daily High") : na
+var label prev_daily_low_label = i_show_prev_daily_low and i_show_labels ? label.new(bar_index + 1, prev_daily_open, "PDL", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_prev_daily_low_color, size.normal, text.align_left, "Previous Daily Low") : na
+var label prev_daily_close_label = i_show_prev_daily_close and i_show_labels ? label.new(bar_index + 1, prev_daily_open, "PDC", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_prev_daily_close_color, size.normal, text.align_left, "Previous Daily Close") : na
+var label daily_open_label = i_show_daily_open and i_show_labels ? label.new(bar_index + 1, prev_daily_open, "DO", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_daily_open_color, size.normal, text.align_left, "Daily Open") : na
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Calculations
+////////////////////////////////////////////////////////////////////////////////
+
+if barstate.isnew and session.isfirstbar
+    // Session rollover
+    prev_daily_open := daily_open
+    prev_daily_high := daily_high
+    prev_daily_low := daily_low
+    prev_daily_close := daily_close
+    daily_open := open
+    daily_high := high
+    daily_low := low
+    daily_close := close
+
+daily_high := math.max(daily_high, high)
+daily_low := math.min(daily_low, low)
+daily_close := close
+
+if i_show_labels
+    prev_daily_open_label.set_x(bar_index + 1)
+    prev_daily_open_label.set_y(prev_daily_open)
+
+    prev_daily_high_label.set_x(bar_index + 1)
+    prev_daily_high_label.set_y(prev_daily_high)
+
+    prev_daily_low_label.set_x(bar_index + 1)
+    prev_daily_low_label.set_y(prev_daily_low)
+
+    prev_daily_close_label.set_x(bar_index + 1)
+    prev_daily_close_label.set_y(prev_daily_close)
+
+    daily_open_label.set_x(bar_index + 1)
+    daily_open_label.set_y(daily_open)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Plots
+////////////////////////////////////////////////////////////////////////////////
+
+plot(session.islastbar or not i_show_prev_daily_open ? na : prev_daily_open, "Prev Daily Open", i_prev_daily_open_color, 2, plot.style_linebr, linestyle = plot.linestyle_dashed)
+plot(session.islastbar or not i_show_prev_daily_high ? na : prev_daily_high, "Prev Daily High", i_prev_daily_high_color, 2, plot.style_linebr, linestyle = plot.linestyle_dashed)
+plot(session.islastbar or not i_show_prev_daily_low ? na : prev_daily_low, "Prev Daily Low", i_prev_daily_low_color, 2, plot.style_linebr, linestyle = plot.linestyle_dashed)
+plot(session.islastbar or not i_show_prev_daily_close ? na : prev_daily_close, "Prev Daily Close", i_prev_daily_close_color, 2, plot.style_linebr, linestyle = plot.linestyle_dashed)
+plot(session.islastbar or not i_show_daily_open ? na : daily_open, "Daily Open", i_daily_open_color, 2, plot.style_linebr, linestyle = plot.linestyle_dashed)
