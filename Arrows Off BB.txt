@@ -13,8 +13,8 @@ i_bb_series = input.source(close, "Source", group = "Bollinger Bands")
 i_bb_length = input.int(20, "Length", minval = 1, maxval = 999, group = "Bollinger Bands")
 i_bb_mult = input.float(2.0, "Multiplier", minval = 0, step = 0.1, group = "Bollinger Bands")
 
-i_bullish_color = input.color(#00c3ff, "Bullish", group = "Engulfing Candles")
-i_bearish_color = input.color(#df1878, "Bearish", group = "Engulfing Candles")
+i_bullish_color = input.color(#00c3ff, "Bullish", group = "Entry Signals")
+i_bearish_color = input.color(#df1878, "Bearish", group = "Entry Signals")
 
 
 ////////////////////////////////////////////////////////////////////////////////
