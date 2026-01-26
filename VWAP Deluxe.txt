@@ -4,6 +4,9 @@ indicator(title="VWAP Deluxe", overlay=true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.1
+// - Improved inputs display
+// - Improved plot naming
 // v1.1.0
 // - Improved settings
 // v1.0.0
@@ -53,14 +56,14 @@ var anchor = input.string(defval = "Session", title="Anchor Period",
 src = input(title = "Source", defval = ohlc4, group=VWAP_SETTINGS_GROUP, display = display.data_window)
 offset = input.int(0, title="Offset", group=VWAP_SETTINGS_GROUP, minval=0, display = display.data_window)
 
-StandardDeviations i_num_std_deviations = input.enum(StandardDeviations.three, "Standard Deviations", group = BANDS_SETTINGS_GROUP, display = display.data_window)
+StandardDeviations i_num_std_deviations = input.enum(StandardDeviations.three, "Standard Deviations", group = BANDS_SETTINGS_GROUP)
 var bool showBand_1 = i_num_std_deviations != StandardDeviations.none
 var bool showBand_2 = i_num_std_deviations == StandardDeviations.two or i_num_std_deviations == StandardDeviations.three
 var bool showBand_3 = i_num_std_deviations == StandardDeviations.three
 
-i_std_dev_1_mult = input.float(1.0, title = "Std Dev 1 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, display = display.data_window, active = showBand_1)
-i_std_dev_2_mult = input.float(2.0, title = "Std Dev 2 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, display = display.data_window, active = showBand_2)
-i_std_dev_3_mult = input.float(3.0, title = "Std Dev 3 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, display = display.data_window, active = showBand_3)
+i_std_dev_1_mult = input.float(1.0, title = "Std Dev 1 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, active = showBand_1)
+i_std_dev_2_mult = input.float(2.0, title = "Std Dev 2 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, active = showBand_2)
+i_std_dev_3_mult = input.float(3.0, title = "Std Dev 3 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, active = showBand_3)
 
 i_stddev1_upper_area_color = input.color(color.new(color.blue, 70), "Std Dev 1 Upper Area", group = DISPLAY_GROUP, active = showBand_1)
 i_stddev1_lower_area_color = input.color(color.new(color.blue, 70), "Std Dev 1 Lower Area", group = DISPLAY_GROUP, active = showBand_1)
@@ -75,31 +78,31 @@ i_color_vwap_by_price = input.bool(false, "Color VWAP by price", inline = "Color
 i_above_price_vwap_color = input.color(color.red, "", inline = "Color VWAP by price", group = DISPLAY_GROUP)
 i_below_price_vwap_color = input.color(color.green, "", inline = "Color VWAP by price", group = DISPLAY_GROUP)
 
-i_show_bars_in_balance_region = input.bool(false, "Highlight bars in balance region", "Highlights bars in between the upper and lower levels of VWAP band #1", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
+i_show_bars_in_balance_region = input.bool(false, "Highlight bars in balance region", "Highlight the bars closing inside the Std Deviation 1 bands", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
 i_bars_in_balance_region_bullish_color = input.color(#b8b8b8, "", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
 i_bars_in_balance_region_bearish_color = input.color(#636363, "", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
 
-i_show_bars_in_bullish_imbalance_region = input.bool(false, "Highlight bars in bullish imbalance region", "Highlights bars above the upper level of VWAP band #1", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
+i_show_bars_in_bullish_imbalance_region = input.bool(false, "Highlight bars in bullish imbalance region", "Highlight the bars closing above the Std Deviation 1 Upper band", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 i_bars_in_bullish_imbalance_region_bullish_color = input.color(#4caf50, "", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 i_bars_in_bullish_imbalance_region_bearish_color = input.color(#1b5e20, "", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 
-i_show_bars_in_bearish_imbalance_region = input.bool(false, "Highlight bars in bearish imbalance region", "Highlights bars below the lower level of VWAP band #1", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
+i_show_bars_in_bearish_imbalance_region = input.bool(false, "Highlight bars in bearish imbalance region", "Highlight the bars closing below the Std Deviation 1 Lower band", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 i_bars_in_bearish_imbalance_region_bullish_color = input.color(#f23645, "", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 i_bars_in_bearish_imbalance_region_bearish_color = input.color(#801922, "", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 
-i_show_interactions = input.bool(false, "Highlight VWAP interactions", "Highlights bars which touch VWAP or its bands", inline = "Interactions", group = BARS_GROUP)
+i_show_interactions = input.bool(false, "Highlight bar/VWAP interactions", "Highlight the bars touching VWAP or any Std Deviation band", inline = "Interactions", group = BARS_GROUP)
 i_interaction_bullish_color = input.color(#ffeb3b, "", inline = "Interactions", group = BARS_GROUP)
 i_interaction_bearish_color = input.color(#f57f17, "", inline = "Interactions", group = BARS_GROUP)
 
 i_use_alert_window = input.bool(false, "Use alert window", inline = "Alert Window", group = ALERTS_GROUP)
-i_alert_window = input.session("0800-1500", "", inline = "Alert Window", group = ALERTS_GROUP, active = i_use_alert_window)
+i_alert_window = input.session("0800-1500", "", inline = "Alert Window", group = ALERTS_GROUP, active = i_use_alert_window, display = display.none)
 i_alert_on_vwap = input.bool(false, "Alerts on VWAP interactions", group = ALERTS_GROUP)
-i_alert_on_band1 = input.bool(false, "Alerts on VWAP band #1 interactions", group = ALERTS_GROUP, active = showBand_1)
-i_alert_on_band2 = input.bool(false, "Alerts on VWAP band #2 interactions", group = ALERTS_GROUP, active = showBand_2)
-i_alert_on_band3 = input.bool(false, "Alerts on VWAP band #3 interactions", group = ALERTS_GROUP, active = showBand_3)
+i_alert_on_band1 = input.bool(false, "Alerts on Std Dev 1 interactions", group = ALERTS_GROUP, active = showBand_1)
+i_alert_on_band2 = input.bool(false, "Alerts on Std Dev 2 interactions", group = ALERTS_GROUP, active = showBand_2)
+i_alert_on_band3 = input.bool(false, "Alerts on Std Dev 3 interactions", group = ALERTS_GROUP, active = showBand_3)
 
 enum VersionEnum
-    version = "v1.1.0"
+    version = "v1.1.1"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -172,14 +175,14 @@ if not (hideonDWM and timeframe.isdwm)
 color vwap_color = (not i_color_vwap_by_price) ? color.aqua : (vwapValue > close ? i_above_price_vwap_color : i_below_price_vwap_color)
 vwap_plot = plot(vwapValue, title = "VWAP", color = vwap_color, linewidth = 3, offset = offset)
 
-upperBand_1_plot = plot(upperBandValue1, title="Upper Band #1", color = color.blue, offset = offset, display = showBand_1 ? display.all : display.none, editable = showBand_1)
-lowerBand_1_plot = plot(lowerBandValue1, title="Lower Band #1", color = color.blue, offset = offset, display = showBand_1 ? display.all : display.none, editable = showBand_1)
+upperBand_1_plot = plot(upperBandValue1, title="Std Dev 1 Upper", color = color.blue, offset = offset, display = showBand_1 ? display.all : display.none, editable = showBand_1)
+lowerBand_1_plot = plot(lowerBandValue1, title="Std Dev 1 Lower", color = color.blue, offset = offset, display = showBand_1 ? display.all : display.none, editable = showBand_1)
 
-upperBand_2_plot = plot(upperBandValue2, title="Upper Band #2", color = color.blue, offset = offset, display = showBand_2 ? display.all : display.none, editable = showBand_2)
-lowerBand_2_plot = plot(lowerBandValue2, title="Lower Band #2", color = color.blue, offset = offset, display = showBand_2 ? display.all : display.none, editable = showBand_2)
+upperBand_2_plot = plot(upperBandValue2, title="Std Dev 2 Upper", color = color.blue, offset = offset, display = showBand_2 ? display.all : display.none, editable = showBand_2)
+lowerBand_2_plot = plot(lowerBandValue2, title="Std Dev 2 Lower", color = color.blue, offset = offset, display = showBand_2 ? display.all : display.none, editable = showBand_2)
 
-upperBand_3_plot = plot(upperBandValue3, title="Upper Band #3", color = color.blue, offset = offset, display = showBand_3 ? display.all : display.none, editable = showBand_3)
-lowerBand_3_plot = plot(lowerBandValue3, title="Lower Band #3", color = color.blue, offset = offset, display = showBand_3 ? display.all : display.none, editable = showBand_3)
+upperBand_3_plot = plot(upperBandValue3, title="Std Dev 3 Upper", color = color.blue, offset = offset, display = showBand_3 ? display.all : display.none, editable = showBand_3)
+lowerBand_3_plot = plot(lowerBandValue3, title="Std Dev 3 Lower", color = color.blue, offset = offset, display = showBand_3 ? display.all : display.none, editable = showBand_3)
 
 fill(upperBand_1_plot, vwap_plot, title="Std Dev 1 Upper Area", color = i_stddev1_upper_area_color, display = showBand_1 ? display.all : display.none, editable = showBand_1)
 fill(lowerBand_1_plot, vwap_plot, title="Std Dev 1 Lower Area", color = i_stddev1_lower_area_color, display = showBand_1 ? display.all : display.none, editable = showBand_1)
@@ -241,22 +244,22 @@ if (not i_use_alert_window) or (i_use_alert_window and not na(time("", i_alert_w
         last_alert_level := VWAPLevel.vwap
 
     if i_alert_on_band1 and touching_band1_upper and (na(last_alert_level) or last_alert_level != VWAPLevel.upper_band1)
-        alert(syminfo.ticker + " touching upper VWAP band #1")
+        alert(syminfo.ticker + " touching Std Dev 1 Upper")
         last_alert_level := VWAPLevel.upper_band1
     if i_alert_on_band1 and touching_band1_lower and (na(last_alert_level) or last_alert_level != VWAPLevel.lower_band1)
-        alert(syminfo.ticker + " touching lower VWAP band #1")
+        alert(syminfo.ticker + " touching Std Dev 1 Lower")
         last_alert_level := VWAPLevel.lower_band1
 
     if i_alert_on_band2 and touching_band2_upper and (na(last_alert_level) or last_alert_level != VWAPLevel.upper_band2)
-        alert(syminfo.ticker + " touching upper VWAP band #2")
+        alert(syminfo.ticker + " touching Std Dev 2 Upper")
         last_alert_level := VWAPLevel.upper_band2
     if i_alert_on_band2 and touching_band2_lower and (na(last_alert_level) or last_alert_level != VWAPLevel.lower_band2)
-        alert(syminfo.ticker + " touching lower VWAP band #2")
+        alert(syminfo.ticker + " touching Std Dev 2 Lower")
         last_alert_level := VWAPLevel.lower_band2
 
     if i_alert_on_band3 and touching_band3_upper and (na(last_alert_level) or last_alert_level != VWAPLevel.upper_band3)
-        alert(syminfo.ticker + " touching upper VWAP band #3")
+        alert(syminfo.ticker + " touching Std Dev 3 Upper")
         last_alert_level := VWAPLevel.upper_band3
     if i_alert_on_band3 and touching_band3_lower and (na(last_alert_level) or last_alert_level != VWAPLevel.lower_band3)
-        alert(syminfo.ticker + " touching lower VWAP band #3")
+        alert(syminfo.ticker + " touching Std Dev 3 Lower")
         last_alert_level := VWAPLevel.lower_band3
