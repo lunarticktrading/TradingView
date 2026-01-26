@@ -4,6 +4,8 @@ indicator(title="VWAP Deluxe", overlay=true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.0
+// - Improved settings
 // v1.0.0
 // - Initial release
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -12,6 +14,12 @@ indicator(title="VWAP Deluxe", overlay=true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Enums
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum StandardDeviations
+    none = "None"
+    one = "One"
+    two = "Two"
+    three = "Three"
 
 enum VWAPLevel
     upper_band3 = "Upper Band #3"
@@ -45,39 +53,39 @@ var anchor = input.string(defval = "Session", title="Anchor Period",
 src = input(title = "Source", defval = ohlc4, group=VWAP_SETTINGS_GROUP, display = display.data_window)
 offset = input.int(0, title="Offset", group=VWAP_SETTINGS_GROUP, minval=0, display = display.data_window)
 
-CALC_MODE_TOOLTIP = "Determines the units used to calculate the distance of the bands. When 'Percentage' is selected, a multiplier of 1 means 1%."
-calcModeInput = input.string("Standard Deviation", "Bands Calculation Mode", options = ["Standard Deviation", "Percentage"], group = BANDS_SETTINGS_GROUP, tooltip = CALC_MODE_TOOLTIP, display = display.data_window)
-showBand_1 = input(true, title = "", group = BANDS_SETTINGS_GROUP, inline = "band_1", display = display.data_window)
-bandMult_1 = input.float(1.0, title = "Bands Multiplier #1", group = BANDS_SETTINGS_GROUP, inline = "band_1", step = 0.5, minval=0, display = display.data_window, active = showBand_1)
-showBand_2 = input(true, title = "", group = BANDS_SETTINGS_GROUP, inline = "band_2", display = display.data_window)
-bandMult_2 = input.float(2.0, title = "Bands Multiplier #2", group = BANDS_SETTINGS_GROUP, inline = "band_2", step = 0.5, minval=0, display = display.data_window, active = showBand_2)
-showBand_3 = input(true, title = "", group = BANDS_SETTINGS_GROUP, inline = "band_3", display = display.data_window)
-bandMult_3 = input.float(3.0, title = "Bands Multiplier #3", group = BANDS_SETTINGS_GROUP, inline = "band_3", step = 0.5, minval=0, display = display.data_window, active = showBand_3)
+StandardDeviations i_num_std_deviations = input.enum(StandardDeviations.three, "Standard Deviations", group = BANDS_SETTINGS_GROUP, display = display.data_window)
+var bool showBand_1 = i_num_std_deviations != StandardDeviations.none
+var bool showBand_2 = i_num_std_deviations == StandardDeviations.two or i_num_std_deviations == StandardDeviations.three
+var bool showBand_3 = i_num_std_deviations == StandardDeviations.three
 
-i_stddev1_upper_area_color = input.color(color.new(color.blue, 70), "Std Dev 1 Upper Area", group = DISPLAY_GROUP)
-i_stddev1_lower_area_color = input.color(color.new(color.blue, 70), "Std Dev 1 Lower Area", group = DISPLAY_GROUP)
+i_std_dev_1_mult = input.float(1.0, title = "Std Dev 1 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, display = display.data_window, active = showBand_1)
+i_std_dev_2_mult = input.float(2.0, title = "Std Dev 2 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, display = display.data_window, active = showBand_2)
+i_std_dev_3_mult = input.float(3.0, title = "Std Dev 3 Multiplier", group = BANDS_SETTINGS_GROUP, step = 0.5, minval=0, display = display.data_window, active = showBand_3)
 
-i_stddev2_upper_area_color = input.color(color.new(color.blue, 80), "Std Dev 2 Upper Area", group = DISPLAY_GROUP)
-i_stddev2_lower_area_color = input.color(color.new(color.blue, 80), "Std Dev 2 Lower Area", group = DISPLAY_GROUP)
+i_stddev1_upper_area_color = input.color(color.new(color.blue, 70), "Std Dev 1 Upper Area", group = DISPLAY_GROUP, active = showBand_1)
+i_stddev1_lower_area_color = input.color(color.new(color.blue, 70), "Std Dev 1 Lower Area", group = DISPLAY_GROUP, active = showBand_1)
 
-i_stddev3_upper_area_color = input.color(color.new(color.blue, 90), "Std Dev 3 Upper Area", group = DISPLAY_GROUP)
-i_stddev3_lower_area_color = input.color(color.new(color.blue, 90), "Std Dev 3 Lower Area", group = DISPLAY_GROUP)
+i_stddev2_upper_area_color = input.color(color.new(color.blue, 80), "Std Dev 2 Upper Area", group = DISPLAY_GROUP, active = showBand_2)
+i_stddev2_lower_area_color = input.color(color.new(color.blue, 80), "Std Dev 2 Lower Area", group = DISPLAY_GROUP, active = showBand_2)
+
+i_stddev3_upper_area_color = input.color(color.new(color.blue, 90), "Std Dev 3 Upper Area", group = DISPLAY_GROUP, active = showBand_3)
+i_stddev3_lower_area_color = input.color(color.new(color.blue, 90), "Std Dev 3 Lower Area", group = DISPLAY_GROUP, active = showBand_3)
 
 i_color_vwap_by_price = input.bool(false, "Color VWAP by price", inline = "Color VWAP by price", group = DISPLAY_GROUP)
 i_above_price_vwap_color = input.color(color.red, "", inline = "Color VWAP by price", group = DISPLAY_GROUP)
 i_below_price_vwap_color = input.color(color.green, "", inline = "Color VWAP by price", group = DISPLAY_GROUP)
 
-i_show_bars_in_balance_region = input.bool(false, "Highlight bars in balance region", "Highlights bars in between the upper and lower levels of VWAP band #1", inline = "Balance Region", group = BARS_GROUP)
-i_bars_in_balance_region_bullish_color = input.color(#b8b8b8, "", inline = "Balance Region", group = BARS_GROUP)
-i_bars_in_balance_region_bearish_color = input.color(#636363, "", inline = "Balance Region", group = BARS_GROUP)
+i_show_bars_in_balance_region = input.bool(false, "Highlight bars in balance region", "Highlights bars in between the upper and lower levels of VWAP band #1", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
+i_bars_in_balance_region_bullish_color = input.color(#b8b8b8, "", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
+i_bars_in_balance_region_bearish_color = input.color(#636363, "", inline = "Balance Region", group = BARS_GROUP, active = showBand_1)
 
-i_show_bars_in_bullish_imbalance_region = input.bool(false, "Highlight bars in bullish imbalance region", "Highlights bars above the upper level of VWAP band #1", inline = "Bullish Imbalance Region", group = BARS_GROUP)
-i_bars_in_bullish_imbalance_region_bullish_color = input.color(#4caf50, "", inline = "Bullish Imbalance Region", group = BARS_GROUP)
-i_bars_in_bullish_imbalance_region_bearish_color = input.color(#1b5e20, "", inline = "Bullish Imbalance Region", group = BARS_GROUP)
+i_show_bars_in_bullish_imbalance_region = input.bool(false, "Highlight bars in bullish imbalance region", "Highlights bars above the upper level of VWAP band #1", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
+i_bars_in_bullish_imbalance_region_bullish_color = input.color(#4caf50, "", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
+i_bars_in_bullish_imbalance_region_bearish_color = input.color(#1b5e20, "", inline = "Bullish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 
-i_show_bars_in_bearish_imbalance_region = input.bool(false, "Highlight bars in bearish imbalance region", "Highlights bars below the lower level of VWAP band #1", inline = "Bearish Imbalance Region", group = BARS_GROUP)
-i_bars_in_bearish_imbalance_region_bullish_color = input.color(#f23645, "", inline = "Bearish Imbalance Region", group = BARS_GROUP)
-i_bars_in_bearish_imbalance_region_bearish_color = input.color(#801922, "", inline = "Bearish Imbalance Region", group = BARS_GROUP)
+i_show_bars_in_bearish_imbalance_region = input.bool(false, "Highlight bars in bearish imbalance region", "Highlights bars below the lower level of VWAP band #1", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
+i_bars_in_bearish_imbalance_region_bullish_color = input.color(#f23645, "", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
+i_bars_in_bearish_imbalance_region_bearish_color = input.color(#801922, "", inline = "Bearish Imbalance Region", group = BARS_GROUP, active = showBand_1)
 
 i_show_interactions = input.bool(false, "Highlight VWAP interactions", "Highlights bars which touch VWAP or its bands", inline = "Interactions", group = BARS_GROUP)
 i_interaction_bullish_color = input.color(#ffeb3b, "", inline = "Interactions", group = BARS_GROUP)
@@ -91,7 +99,7 @@ i_alert_on_band2 = input.bool(false, "Alerts on VWAP band #2 interactions", grou
 i_alert_on_band3 = input.bool(false, "Alerts on VWAP band #3 interactions", group = ALERTS_GROUP, active = showBand_3)
 
 enum VersionEnum
-    version = "v1.0.0"
+    version = "v1.1.0"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -148,13 +156,13 @@ if not (hideonDWM and timeframe.isdwm)
     [_vwap, _stdevUpper, _] = ta.vwap(src, isNewPeriod, 1)
     vwapValue := _vwap
     stdevAbs = _stdevUpper - _vwap
-    bandBasis = calcModeInput == "Standard Deviation" ? stdevAbs : _vwap * 0.01
-    upperBandValue1 := _vwap + bandBasis * bandMult_1
-    lowerBandValue1 := _vwap - bandBasis * bandMult_1
-    upperBandValue2 := _vwap + bandBasis * bandMult_2
-    lowerBandValue2 := _vwap - bandBasis * bandMult_2
-    upperBandValue3 := _vwap + bandBasis * bandMult_3
-    lowerBandValue3 := _vwap - bandBasis * bandMult_3
+    bandBasis = stdevAbs
+    upperBandValue1 := _vwap + bandBasis * i_std_dev_1_mult
+    lowerBandValue1 := _vwap - bandBasis * i_std_dev_1_mult
+    upperBandValue2 := _vwap + bandBasis * i_std_dev_2_mult
+    lowerBandValue2 := _vwap - bandBasis * i_std_dev_2_mult
+    upperBandValue3 := _vwap + bandBasis * i_std_dev_3_mult
+    lowerBandValue3 := _vwap - bandBasis * i_std_dev_3_mult
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
