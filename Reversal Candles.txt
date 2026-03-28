@@ -1,0 +1,127 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("Reversal Candles", overlay = true, max_labels_count = 500)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var WICK_REVERSALS_GROUP = "WICK REVERSALS"
+var EXTREME_REVERSALS_GROUP = "EXTREME REVERSALS"
+var OUTSIDE_REVERSALS_GROUP = "OUTSIDE REVERSALS"
+var DOJI_REVERSALS_GROUP = "DOJI REVERSALS"
+var ADVANCED_GROUP = "ADVANCED"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool i_enable_wick_reversals = input.bool(true, "Wick Reversals", group = WICK_REVERSALS_GROUP)
+float i_wr_wick_body_ratio = input.float(2.5, "Wick-to-Body Ratio", tooltip = "A reversal wick length must be at least the chosen multiple of the body length.", group = WICK_REVERSALS_GROUP)
+float i_wr_close_pct = input.float(35, "Close Percentage", minval=0, maxval=100, tooltip = "A bullish candle must close within the chosen percentage distance from the high.\nA bearish candle must close within the chosen percentage distance from the low.", group = WICK_REVERSALS_GROUP)
+
+bool i_enable_extreme_reversals = input.bool(true, "Extreme Reversals", group = EXTREME_REVERSALS_GROUP)
+float i_er_extreme_bar_multiple_of_avg = input.float(2, "Extreme Bar Multiple Of Average Bar Length", minval=1, tooltip = "Extreme candle length must be at least the chosen multiple of the average candle length.", group = EXTREME_REVERSALS_GROUP)
+float i_er_extreme_bar_min_body_pct = input.float(50, "Extreme Bar Body Min Percentage", minval=0, maxval=100, tooltip = "Extreme candle body must be at least the chosen percentage of total candle length.", group = EXTREME_REVERSALS_GROUP)
+float i_er_extreme_bar_max_body_pct = input.float(85, "Extreme Bar Body Max Percentage", minval=0, maxval=100, tooltip = "Extreme candle body must be less than the chosen percentage of total candle length.", group = EXTREME_REVERSALS_GROUP)
+
+bool i_enable_outside_reversals = input.bool(true, "Outside Reversals", group = OUTSIDE_REVERSALS_GROUP)
+float i_or_engulfing_larger_than_avg_pct = input.float(20, "Engulfing Larger Than Average By Percentage", minval=0, tooltip = "Engulfing candle must be the chosen percentage larger than the average candle.", group = OUTSIDE_REVERSALS_GROUP)
+
+bool i_enable_doji_reversals = input.bool(true, "Doji Reversals", group = DOJI_REVERSALS_GROUP)
+
+int i_atr_period = input.int(14, "ATR Period", minval=1, tooltip = "ATR period used for determining the average candle length.", group = ADVANCED_GROUP)
+
+bool i_show_labels = input.bool(false, "Show Labels", group = DISPLAY_GROUP)
+
+enum VersionEnum
+    version = "v1.0.0"
+    
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Calculations
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool bullish_wick_reversal = false
+bool bearish_wick_reversal = false
+
+bool bullish_extreme_reversal = false
+bool bearish_extreme_reversal = false
+
+bool bullish_outside_reversal = false
+bool bearish_outside_reversal = false
+
+bool bullish_doji_reversal = false
+bool bearish_doji_reversal = false
+
+sma10 = ta.sma(close, 10)
+atr = ta.atr(i_atr_period)
+
+if barstate.isconfirmed
+    bar_range = high - low
+    bar_body_length = math.max(open, close) - math.min(open, close)
+    bar_upper_wick_length = high - math.max(open, close)
+    bar_lower_wick_length = math.min(open, close) - low
+    bar_range1 = high[1] - low[1]
+    bar_body_length1 = math.max(open[1], close[1]) - math.min(open[1], close[1])
+
+    bar_range2 = high[2] - low[2]
+    bar_body_length2 = math.max(open[2], close[2]) - math.min(open[2], close[2])
+
+    // Wick reversals
+    bullish_wick_reversal := i_enable_wick_reversals and ((bar_lower_wick_length / bar_body_length) >= i_wr_wick_body_ratio) and ((((high - close) / bar_range) * 100) <= i_wr_close_pct)
+    bearish_wick_reversal := i_enable_wick_reversals and ((bar_upper_wick_length / bar_body_length) >= i_wr_wick_body_ratio) and ((((close - low) / bar_range) * 100) <= i_wr_close_pct)
+
+    // Extreme reversals
+    bullish_extreme_reversal := i_enable_extreme_reversals and (bar_range1 >= (i_er_extreme_bar_multiple_of_avg * atr)) and (((bar_body_length1 / bar_range1) * 100) >= i_er_extreme_bar_min_body_pct) and (((bar_body_length1 / bar_range1) * 100) <= i_er_extreme_bar_max_body_pct) and (close[1] < open[1]) and (close > open)
+    bearish_extreme_reversal := i_enable_extreme_reversals and (bar_range1 >= (i_er_extreme_bar_multiple_of_avg * atr)) and (((bar_body_length1 / bar_range1) * 100) >= i_er_extreme_bar_min_body_pct) and (((bar_body_length1 / bar_range1) * 100) <= i_er_extreme_bar_max_body_pct) and (close[1] > open[1]) and (close < open)
+
+    // Outside reversals
+    bullish_outside_reversal := i_enable_outside_reversals and (low < low[1]) and (close > high[1]) and (bar_range > (atr * ((i_or_engulfing_larger_than_avg_pct + 100) / 100.0)))
+    bearish_outside_reversal := i_enable_outside_reversals and (high > high[1]) and (close < low[1]) and (bar_range > (atr * ((i_or_engulfing_larger_than_avg_pct + 100) / 100.0)))
+
+    // Doji reversals
+    bullish_doji_reversal := i_enable_doji_reversals and ((((bar_body_length1 / bar_range1) <= 0.1) and (high[1] < sma10) and (close > high[1])) or (((bar_body_length2 / bar_range2) <= 0.1) and (high[2] < sma10) and (close > high[2])))
+    bearish_doji_reversal := i_enable_doji_reversals and ((((bar_body_length1 / bar_range1) <= 0.1) and (low[1] > sma10) and (close < low[1])) or (((bar_body_length2 / bar_range2) <= 0.1) and (low[2] > sma10) and (close < low[2])))
+
+    if i_show_labels
+        if bullish_wick_reversal
+            label.new(bar_index, low, "WR", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_up, color.new(color.green, 50), tooltip = "Wick Reversal")
+        if bearish_wick_reversal
+            label.new(bar_index, high, "WR", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_down, color.new(color.red, 50), tooltip = "Wick Reversal")
+        if bullish_extreme_reversal
+            label.new(bar_index, low, "ER", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_up, color.new(color.green, 50), tooltip = "Extreme Reversal")
+        if bearish_extreme_reversal
+            label.new(bar_index, high, "ER", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_down, color.new(color.red, 50), tooltip = "Extreme Reversal")
+        if bullish_outside_reversal
+            label.new(bar_index, low, "OR", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_up, color.new(color.green, 50), tooltip = "Outside Reversal")
+        if bearish_outside_reversal
+            label.new(bar_index, high, "OR", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_down, color.new(color.red, 50), tooltip = "Outside Reversal")
+        if bullish_doji_reversal
+            label.new(bar_index, low, "DR", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_up, color.new(color.green, 50), tooltip = "Doji Reversal")
+        if bearish_doji_reversal
+            label.new(bar_index, high, "DR", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_down, color.new(color.red, 50), tooltip = "Doji Reversal")
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Plots
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+plotshape(bullish_wick_reversal, "Bullish Wick Reversals", shape.triangleup, location.belowbar, color.new(color.green, 50))
+plotshape(bearish_wick_reversal, "Bearish Wick Reversals", shape.triangledown, location.abovebar, color.new(color.red, 50))
+
+plotshape(bullish_extreme_reversal, "Bullish Extreme Reversals", shape.triangleup, location.belowbar, color.new(color.green, 50))
+plotshape(bearish_extreme_reversal, "Bearish Extreme Reversals", shape.triangledown, location.abovebar, color.new(color.red, 50))
+
+plotshape(bullish_outside_reversal, "Bullish Outside Reversals", shape.triangleup, location.belowbar, color.new(color.green, 50))
+plotshape(bearish_outside_reversal, "Bearish Outside Reversals", shape.triangledown, location.abovebar, color.new(color.red, 50))
+
+plotshape(bullish_doji_reversal, "Bullish Doji Reversals", shape.triangleup, location.belowbar, color.new(color.green, 50))
+plotshape(bearish_doji_reversal, "Bearish Doji Reversals", shape.triangledown, location.abovebar, color.new(color.red, 50))

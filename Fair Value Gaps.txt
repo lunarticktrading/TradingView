@@ -1,0 +1,196 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+
+var MAX_BOXES = 500
+
+indicator("Fair Value Gaps", overlay=true, max_boxes_count = MAX_BOXES)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////
+
+var FVG_GROUP = "FAIR VALUE GAPS"
+var IFVG_GROUP = "INVERSE FAIR VALUE GAPS"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////
+
+enum Direction
+    bullish
+    bearish
+
+enum FVGType
+    FVG
+    IFVG
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////
+
+FVGType i_fvg_mode = input.enum(FVGType.FVG, "Mode")
+
+color i_bullish_fvg_color = input.color(color.green, "Bullish FVG", group = FVG_GROUP)
+color i_bearish_fvg_color = input.color(color.red, "Bearish FVG", group = FVG_GROUP)
+
+bool i_require_fvg_bars_same_direction = input.bool(false, "Require FVG bars same direction", tooltip = "Specifies if all three FVG bars must be in the same direction.", group = FVG_GROUP)
+
+bool i_enable_max_length_bars = input.bool(true, "Max length", tooltip = "Maximum length of FVG in bars.", inline = "Max bars", group = FVG_GROUP)
+int i_max_length_bars = input.int(20, "", minval = 1, inline = "Max bars", group = FVG_GROUP)
+
+bool i_enable_min_fvg_size_ticks = input.bool(true, "Minimum size", tooltip = "Minimum size of the FVG in ticks.", inline = "Minimum size", group = FVG_GROUP)
+int i_min_fvg_size_ticks = input.int(20, "", minval = 1, inline = "Minimum size", group = FVG_GROUP)
+
+bool i_enable_max_fvg_size_ticks = input.bool(true, "Maximum size", tooltip = "Maximum size of the FVG in ticks.", inline = "Maximum size", group = FVG_GROUP)
+int i_max_fvg_size_ticks = input.int(200, "", minval = 1, inline = "Maximum size", group = FVG_GROUP)
+
+color i_bullish_ifvg_color = input.color(color.aqua, "Bullish IFVG", group = IFVG_GROUP)
+color i_bearish_ifvg_color = input.color(color.fuchsia, "Bearish IFVG", group = IFVG_GROUP)
+
+bool i_remove_obsolete_fvg = input.bool(true, "Remove obsolete FVG", group = IFVG_GROUP)
+
+int i_border_transparency = input.int(30, "Border Transparency", minval = 0, maxval = 100, display = display.none, group = DISPLAY_GROUP)
+int i_bg_transparency = input.int(60, "Background Transparency", minval = 0, maxval = 100, display = display.none, group = DISPLAY_GROUP)
+
+enum VersionEnum
+    version = "v1.0.0"
+    
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Objects
+////////////////////////////////////////////////////////////////////////////////
+
+type FVG
+    FVGType type
+    Direction direction
+    int start_bar_index
+    float top
+    float bottom
+    bool active = true
+    box fvg_box = na
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Methods
+////////////////////////////////////////////////////////////////////////////////
+
+method update_fvg_box(FVG self) =>
+    if na(self.fvg_box)
+        color border_color = color.new(self.direction == Direction.bullish ? i_bullish_fvg_color : i_bearish_fvg_color, i_border_transparency)
+        color bg_color = color.new(self.direction == Direction.bullish ? i_bullish_fvg_color : i_bearish_fvg_color, i_bg_transparency)
+        self.fvg_box := box.new(self.start_bar_index - 1, self.top, self.start_bar_index + 1, self.bottom, border_color, 1, line.style_solid, extend.none, xloc.bar_index, bg_color, "FVG", size.auto, border_color, text.align_center, text.align_center)
+
+method delete_fvg_box(FVG self) =>
+    if not na(self.fvg_box)
+        box.delete(self.fvg_box)
+        self.fvg_box := na
+
+method extend(FVG self, int right_bar_index) =>
+    if self.active and not na(self.fvg_box)
+        self.fvg_box.set_right(right_bar_index)
+        if i_enable_max_length_bars and (right_bar_index - self.start_bar_index) == i_max_length_bars
+            self.active := false
+
+method invert(FVG self) =>
+    if self.type == FVGType.FVG
+        self.type := FVGType.IFVG
+        self.direction := (self.direction == Direction.bullish) ? Direction.bearish : Direction.bullish
+        self.fvg_box.set_text("IFVG")
+        color bg_color = color.new(self.direction == Direction.bullish ? i_bullish_ifvg_color : i_bearish_ifvg_color, i_bg_transparency)
+        color border_color = color.new(self.direction == Direction.bullish ? i_bullish_ifvg_color : i_bearish_ifvg_color, i_border_transparency)
+        self.fvg_box.set_bgcolor(bg_color)
+        self.fvg_box.set_border_color(border_color)
+        self.fvg_box.set_text_color(border_color)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// State
+////////////////////////////////////////////////////////////////////////////////
+
+var fvg_array = array.new<FVG>(MAX_BOXES)
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////
+
+is_bullish(int bars_ago) =>
+    close[bars_ago] > open[bars_ago]
+
+is_bearish(int bars_ago) =>
+    close[bars_ago] < open[bars_ago]
+
+remove_inactive_fvg() =>
+    clean_fvg_array = array.new<FVG>(MAX_BOXES)
+    if fvg_array.size() > 0 
+        for i = 0 to (fvg_array.size() - 1)
+            curr_fvg = fvg_array.get(i)
+            if not na(curr_fvg)
+                if curr_fvg.type == FVGType.FVG and not curr_fvg.active
+                    // Found obsolete FVG, remove its box and do NOT add to result array.
+                    curr_fvg.delete_fvg_box()
+                else
+                    clean_fvg_array.shift()
+                    clean_fvg_array.push(curr_fvg)
+    clean_fvg_array
+
+
+////////////////////////////////////////////////////////////////////////////////
+// Entry Signals
+////////////////////////////////////////////////////////////////////////////////
+
+if barstate.isnew and bar_index > 2
+    // Update/extend existing active FVGs
+    for i = 0 to fvg_array.size() - 1
+        curr_fvg = fvg_array.get(i)
+        // Only process active FVGs
+        if not na(curr_fvg) and curr_fvg.active
+            // Extend active FVGs
+            curr_fvg.extend(bar_index - 1)
+            // Check to see if active FVG has been breached
+            if curr_fvg.type == FVGType.FVG
+                if (curr_fvg.direction == Direction.bullish and close[1] < curr_fvg.bottom) or (curr_fvg.direction == Direction.bearish and close[1] > curr_fvg.top)
+                    if i_fvg_mode == FVGType.IFVG
+                        curr_fvg.invert()
+                        alert((curr_fvg.direction == Direction.bullish ? "Bullish" : "Bearish") +  " IFVG created")
+                    else
+                        curr_fvg.active := false
+    // Cleanup obsolete FVGs
+    if i_fvg_mode == FVGType.IFVG and fvg_array.size() > 0 and i_remove_obsolete_fvg
+        fvg_array := remove_inactive_fvg()
+
+    // Check for new bullish FVGs
+    FVG new_fvg = na
+    bullish_fvg_size_ticks = (low[1] - high[3]) / syminfo.mintick
+    if is_bullish(2) and ((not i_enable_min_fvg_size_ticks) or (i_enable_min_fvg_size_ticks and bullish_fvg_size_ticks >= i_min_fvg_size_ticks)) and ((not i_enable_max_fvg_size_ticks) or (i_enable_max_fvg_size_ticks and bullish_fvg_size_ticks <= i_max_fvg_size_ticks)) and ((not i_require_fvg_bars_same_direction) or (i_require_fvg_bars_same_direction and is_bullish(3) and is_bullish(1)))
+        new_fvg := FVG.new(FVGType.FVG, Direction.bullish, bar_index[2], low[1], high[3])
+    // Check for new bearish FVGs
+    bearish_fvg_size_ticks = (low[3] - high[1]) / syminfo.mintick
+    if is_bearish(2) and ((not i_enable_min_fvg_size_ticks) or (i_enable_min_fvg_size_ticks and bearish_fvg_size_ticks >= i_min_fvg_size_ticks)) and ((not i_enable_max_fvg_size_ticks) or (i_enable_max_fvg_size_ticks and bearish_fvg_size_ticks <= i_max_fvg_size_ticks)) and ((not i_require_fvg_bars_same_direction) or (i_require_fvg_bars_same_direction and is_bearish(3) and is_bearish(1)))
+        new_fvg := FVG.new(FVGType.FVG, Direction.bearish, bar_index[2], low[3], high[1])
+
+    // Remove oldest FVG before drawing new one
+    if not na(new_fvg)
+        alert((new_fvg.direction == Direction.bullish ? "Bullish" : "Bearish") +  " FVG created")
+        dead_fvg = fvg_array.shift()
+        if not na(dead_fvg)
+            dead_fvg.delete_fvg_box()
+        fvg_array.push(new_fvg)
+        new_fvg.update_fvg_box()
