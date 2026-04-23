@@ -40,9 +40,43 @@ int i_atr_period = input.int(14, "ATR Period", minval=1, tooltip = "ATR period u
 bool i_show_labels = input.bool(false, "Show Labels", group = DISPLAY_GROUP)
 
 enum VersionEnum
-    version = "v1.0.0"
+    version = "v1.1.0"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+format_timeframe_period(string period) =>
+    string result = period
+    string multiplier_str = str.match(period, "^\\d+")
+    if str.endswith(period, "M")
+        // Months
+        result := (multiplier_str == "1") ? "M" : period
+    else if str.endswith(period, "W")
+        // Weeks
+        result := (multiplier_str == "1") ? "W" : period
+    else if str.endswith(period, "D")
+        // Days
+        result := (multiplier_str == "1") ? "D" : period
+    else if str.endswith(period, "S")
+        // Seconds
+        result := multiplier_str + "s"
+    else if str.endswith(period, "T")
+        // Ticks
+        result := multiplier_str + "t"
+    else if str.length(multiplier_str) == str.length(period)
+        // Minutes - Check for exact hours
+        int hours = int(str.tonumber(multiplier_str) / 60)
+        if str.tostring(hours * 60) == multiplier_str
+            // Format as hours
+            result := str.tostring(hours) + "H"
+        else
+            // Format as pure minutes
+            result := multiplier_str + "m"
+    result
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +94,9 @@ bool bearish_outside_reversal = false
 
 bool bullish_doji_reversal = false
 bool bearish_doji_reversal = false
+
+bool bullish_reversal = false
+bool bearish_reversal = false
 
 sma10 = ta.sma(close, 10)
 atr = ta.atr(i_atr_period)
@@ -90,6 +127,10 @@ if barstate.isconfirmed
     // Doji reversals
     bullish_doji_reversal := i_enable_doji_reversals and ((((bar_body_length1 / bar_range1) <= 0.1) and (high[1] < sma10) and (close > high[1])) or (((bar_body_length2 / bar_range2) <= 0.1) and (high[2] < sma10) and (close > high[2])))
     bearish_doji_reversal := i_enable_doji_reversals and ((((bar_body_length1 / bar_range1) <= 0.1) and (low[1] > sma10) and (close < low[1])) or (((bar_body_length2 / bar_range2) <= 0.1) and (low[2] > sma10) and (close < low[2])))
+
+    // Summary reversals
+    bullish_reversal := bullish_wick_reversal or bullish_extreme_reversal or bullish_outside_reversal or bullish_doji_reversal
+    bearish_reversal := bearish_wick_reversal or bearish_extreme_reversal or bearish_outside_reversal or bearish_doji_reversal
 
     if i_show_labels
         if bullish_wick_reversal
@@ -125,3 +166,18 @@ plotshape(bearish_outside_reversal, "Bearish Outside Reversals", shape.triangled
 
 plotshape(bullish_doji_reversal, "Bullish Doji Reversals", shape.triangleup, location.belowbar, color.new(color.green, 50))
 plotshape(bearish_doji_reversal, "Bearish Doji Reversals", shape.triangledown, location.abovebar, color.new(color.red, 50))
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Alerts
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+if barstate.isconfirmed
+    if bullish_reversal
+        string message = "Bullish reversal on " + format_timeframe_period(timeframe.period) + " " + syminfo.ticker
+        log.info("Bullish reversal on " + format_timeframe_period(timeframe.period) + " " + syminfo.ticker)
+        alert(message)
+    if bearish_reversal
+        string message = "Bearish reversal on " + format_timeframe_period(timeframe.period) + " " + syminfo.ticker
+        log.info("Bearish reversal on " + format_timeframe_period(timeframe.period) + " " + syminfo.ticker)
+        alert(message)
