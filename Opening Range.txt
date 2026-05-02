@@ -1,0 +1,443 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("Opening Range", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var SESSION_GROUP = "SESSION"
+var OPENING_RANGE_GROUP = "OPENING RANGE"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+var int SESSION_BORDER_TRANSPARENCY = 50
+var int SESSION_BACKGROUND_TRANSPARENCY = 90
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum LineStyle
+    solid = "Solid"
+    dashed = "Dashed"
+    dotted = "Dotted"
+
+enum ShowExtensionLevels
+    none = "None"
+    one = "One"
+    two = "Two"
+    three = "Three"
+
+enum VersionEnum
+    version = "v1.0.0"
+    
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+i_session = input.session("0930-1700", "Session", group = SESSION_GROUP, display = display.none)
+i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP, display = display.none)
+
+int i_opening_range_duration = input.int(15, "Opening Range Duration", minval = 1, maxval = 60, group = OPENING_RANGE_GROUP)
+
+i_show_num_days = input.int(5, "Show Days", group = DISPLAY_GROUP, display = display.none)
+i_show_ext_levels = input.enum(ShowExtensionLevels.none, "Show Extension Levels", group = DISPLAY_GROUP, display = display.none)
+i_show_mid_levels = input.bool(true, "Show 50% Levels", group = DISPLAY_GROUP, display = display.none)
+
+i_show_opening_range_box = input.bool(true, "Show Opening Range", inline = "OR Box", group = DISPLAY_GROUP, display = display.none)
+i_opening_range_color = input.color(color.fuchsia, "", inline = "OR Box", group = DISPLAY_GROUP, display = display.none, active = i_show_opening_range_box)
+
+i_opening_range_h_color = input.color(color.white, "Opening Range High", inline = "ORH", group = DISPLAY_GROUP, display = display.none)
+i_opening_range_h_style = input.enum(LineStyle.solid, "", inline = "ORH", group = DISPLAY_GROUP, display = display.none)
+i_opening_range_h_width = input.int(2, "", minval = 1, maxval = 4, inline = "ORH", group = DISPLAY_GROUP, display = display.none)
+
+i_opening_range_m_color = input.color(color.white, "Opening Range 50%", inline = "ORM", group = DISPLAY_GROUP, display = display.none, active = i_show_mid_levels)
+i_opening_range_m_style = input.enum(LineStyle.dashed, "", inline = "ORM", group = DISPLAY_GROUP, display = display.none, active = i_show_mid_levels)
+i_opening_range_m_width = input.int(2, "", minval = 1, maxval = 4, inline = "ORM", group = DISPLAY_GROUP, display = display.none, active = i_show_mid_levels)
+
+i_opening_range_l_color = input.color(color.white, "Opening Range Low", inline = "ORL", group = DISPLAY_GROUP, display = display.none)
+i_opening_range_l_style = input.enum(LineStyle.solid, "", inline = "ORL", group = DISPLAY_GROUP, display = display.none)
+i_opening_range_l_width = input.int(2, "", minval = 1, maxval = 4, inline = "ORL", group = DISPLAY_GROUP, display = display.none)
+
+i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
+i_hide_previous_session_labels = input.bool(true, "Hide Previous Session Labels", group = DISPLAY_GROUP, display = display.none, active = i_show_labels)
+
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Types
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+type OpeningRange
+    int start_bar_index = na
+    int end_bar_index = na
+    float range_high = na
+    float range_low = na
+    bool range_closed = false
+    box range_box = na
+    line high_ext3_line = na
+    line high_ext3_mid_line = na
+    line high_ext2_line = na
+    line high_ext2_mid_line = na
+    line high_ext1_line = na
+    line high_ext1_mid_line = na
+    line high_line = na
+    line mid_line = na
+    line low_line = na
+    line low_ext1_mid_line = na
+    line low_ext1_line = na
+    line low_ext2_mid_line = na
+    line low_ext2_line = na
+    line low_ext3_mid_line = na
+    line low_ext3_line = na
+    label high_ext3_label = na
+    label high_ext3_mid_label = na
+    label high_ext2_label = na
+    label high_ext2_mid_label = na
+    label high_ext1_label = na
+    label high_ext1_mid_label = na
+    label high_label = na
+    label mid_label = na
+    label low_label = na
+    label low_ext1_mid_label = na
+    label low_ext1_label = na
+    label low_ext2_mid_label = na
+    label low_ext2_label = na
+    label low_ext3_mid_label = na
+    label low_ext3_label = na
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+request_security_no_repaint(timeframe, expression) =>
+    request.security(symbol = syminfo.tickerid, timeframe = timeframe, expression = expression[barstate.isrealtime ? 1 : 0], gaps = barmerge.gaps_off)[barstate.isrealtime ? 0 : 1] // PineCoders best practice.
+
+pad_leading_zeroes(int value, int length) =>
+    string result = str.tostring(value)
+    while str.length(result) < length
+        result := "0" + result
+    result
+
+time_add_minutes(int value, int minutes) =>
+    int result = value
+    int hh = value / 100
+    int mm = value - (hh * 100)
+    mm += minutes
+    if mm > 59
+        hh += 1
+        mm -= 60
+    else if mm < 0
+        hh -= 1
+        mm += 60
+    result := (hh * 100) + mm
+
+build_opening_range_session(string session, int opening_range_duration_minutes) =>
+    string opening_range_session = na
+    int start_time = int(str.tonumber(str.substring(session, 0, 4)))
+    //log.info("START_TIME: [" + str.tostring(start_time) + "]")
+    int end_time = time_add_minutes(start_time, opening_range_duration_minutes)
+    //log.info("END_TIME: [" + str.tostring(end_time) + "]")
+    opening_range_session := pad_leading_zeroes(start_time, 4) + "-" + pad_leading_zeroes(end_time, 4)
+    //log.info("OR_SESSION: [" + opening_range_session + "]")
+    opening_range_session
+
+get_line_style(LineStyle value) =>
+    switch value
+        LineStyle.dashed => line.style_dashed
+        LineStyle.dotted => line.style_dotted
+        => line.style_solid
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Methods
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+method initialize(OpeningRange self, int start_bar_index, float range_high, float range_low) =>
+    self.start_bar_index := start_bar_index
+    self.range_high := range_high
+    self.range_low := range_low
+    self.range_closed := false
+    if i_show_opening_range_box
+        self.range_box := box.new(start_bar_index, range_high, start_bar_index, range_low, color.new(i_opening_range_color, SESSION_BORDER_TRANSPARENCY), 1, line.style_solid, extend.none, xloc.bar_index, color.new(i_opening_range_color, SESSION_BACKGROUND_TRANSPARENCY), na, size.auto, color.new(i_opening_range_color, SESSION_BORDER_TRANSPARENCY), text.align_center, text.align_top)
+
+method update(OpeningRange self, int end_bar_index, float range_high, float range_low) =>
+    self.end_bar_index := end_bar_index
+    self.range_high := math.max(range_high, self.range_high)
+    self.range_low := math.min(range_low, self.range_low)
+    if not na(self.range_box)
+        self.range_box.set_right(end_bar_index)
+        self.range_box.set_top(self.range_high)
+        self.range_box.set_bottom(self.range_low)
+
+method confirm(OpeningRange self, int right_bar_index) =>
+    if not self.range_closed
+        range_mid = (self.range_high + self.range_low) / 2.0
+        self.high_line := line.new(self.start_bar_index, self.range_high, right_bar_index, self.range_high, xloc.bar_index, extend.none, i_opening_range_h_color, get_line_style(i_opening_range_h_style), i_opening_range_h_width)
+        self.high_label := i_show_labels ? label.new(right_bar_index, self.range_high, str.tostring(i_opening_range_duration) + "m OR High", xloc.bar_index, yloc.price, color.new(i_opening_range_h_color, 100), label.style_label_left, i_opening_range_h_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High") : na
+        self.mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_mid, right_bar_index, range_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+        self.mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_mid, str.tostring(i_opening_range_duration) + "m OR 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range 50%") : na
+        self.low_line := line.new(self.start_bar_index, self.range_low, right_bar_index, self.range_low, xloc.bar_index, extend.none, i_opening_range_l_color, get_line_style(i_opening_range_l_style), i_opening_range_l_width)
+        self.low_label := i_show_labels ? label.new(right_bar_index, self.range_low, str.tostring(i_opening_range_duration) + "m OR Low", xloc.bar_index, yloc.price, color.new(i_opening_range_l_color, 100), label.style_label_left, i_opening_range_l_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low") : na
+        if i_show_ext_levels != ShowExtensionLevels.none
+            range_high_ext1 = self.range_high + (self.range_high - self.range_low)
+            range_high_ext1_mid = self.range_high + 0.5 * (self.range_high - self.range_low)
+            range_low_ext1_mid = self.range_low - 0.5 * (self.range_high - self.range_low)
+            range_low_ext1 = self.range_low - (self.range_high - self.range_low)
+            self.high_ext1_line := line.new(self.start_bar_index, range_high_ext1, right_bar_index, range_high_ext1, xloc.bar_index, extend.none, i_opening_range_h_color, get_line_style(i_opening_range_h_style), i_opening_range_h_width)
+            self.high_ext1_label := i_show_labels ? label.new(right_bar_index, range_high_ext1, str.tostring(i_opening_range_duration) + "m OR High Ext1", xloc.bar_index, yloc.price, color.new(i_opening_range_h_color, 100), label.style_label_left, i_opening_range_h_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High Ext1") : na
+            self.high_ext1_mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_high_ext1_mid, right_bar_index, range_high_ext1_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+            self.high_ext1_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_high_ext1_mid, str.tostring(i_opening_range_duration) + "m OR High Ext1 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High Ext1 50%") : na
+            self.low_ext1_mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_low_ext1_mid, right_bar_index, range_low_ext1_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+            self.low_ext1_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_low_ext1_mid, str.tostring(i_opening_range_duration) + "m OR Low Ext1 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low Ext1 50%") : na
+            self.low_ext1_line := line.new(self.start_bar_index, range_low_ext1, right_bar_index, range_low_ext1, xloc.bar_index, extend.none, i_opening_range_l_color, get_line_style(i_opening_range_l_style), i_opening_range_l_width)
+            self.low_ext1_label := i_show_labels ? label.new(right_bar_index, range_low_ext1, str.tostring(i_opening_range_duration) + "m OR Low Ext1", xloc.bar_index, yloc.price, color.new(i_opening_range_l_color, 100), label.style_label_left, i_opening_range_l_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low Ext1") : na
+        if i_show_ext_levels == ShowExtensionLevels.two or i_show_ext_levels == ShowExtensionLevels.three
+            range_high_ext2 = self.range_high + 2 * (self.range_high - self.range_low)
+            range_high_ext2_mid = self.range_high + 1.5 * (self.range_high - self.range_low)
+            range_low_ext2_mid = self.range_low - 1.5 * (self.range_high - self.range_low)
+            range_low_ext2 = self.range_low - 2 * (self.range_high - self.range_low)
+            self.high_ext2_line := line.new(self.start_bar_index, range_high_ext2, right_bar_index, range_high_ext2, xloc.bar_index, extend.none, i_opening_range_h_color, get_line_style(i_opening_range_h_style), i_opening_range_h_width)
+            self.high_ext2_label := i_show_labels ? label.new(right_bar_index, range_high_ext2, str.tostring(i_opening_range_duration) + "m OR High Ext2", xloc.bar_index, yloc.price, color.new(i_opening_range_h_color, 100), label.style_label_left, i_opening_range_h_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High Ext2") : na
+            self.high_ext2_mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_high_ext2_mid, right_bar_index, range_high_ext2_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+            self.high_ext2_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_high_ext2_mid, str.tostring(i_opening_range_duration) + "m OR High Ext2 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High Ext2 50%") : na
+            self.low_ext2_mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_low_ext2_mid, right_bar_index, range_low_ext2_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+            self.low_ext2_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_low_ext2_mid, str.tostring(i_opening_range_duration) + "m OR Low Ext2 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low Ext2 50%") : na
+            self.low_ext2_line := line.new(self.start_bar_index, range_low_ext2, right_bar_index, range_low_ext2, xloc.bar_index, extend.none, i_opening_range_l_color, get_line_style(i_opening_range_l_style), i_opening_range_l_width)
+            self.low_ext2_label := i_show_labels ? label.new(right_bar_index, range_low_ext2, str.tostring(i_opening_range_duration) + "m OR Low Ext2", xloc.bar_index, yloc.price, color.new(i_opening_range_l_color, 100), label.style_label_left, i_opening_range_l_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low Ext2") : na
+        if i_show_ext_levels == ShowExtensionLevels.three
+            range_high_ext3 = self.range_high + 3 * (self.range_high - self.range_low)
+            range_high_ext3_mid = self.range_high + 2.5 * (self.range_high - self.range_low)
+            range_low_ext3_mid = self.range_low - 2.5 * (self.range_high - self.range_low)
+            range_low_ext3 = self.range_low - 3 * (self.range_high - self.range_low)
+            self.high_ext3_line := line.new(self.start_bar_index, range_high_ext3, right_bar_index, range_high_ext3, xloc.bar_index, extend.none, i_opening_range_h_color, get_line_style(i_opening_range_h_style), i_opening_range_h_width)
+            self.high_ext3_label := i_show_labels ? label.new(right_bar_index, range_high_ext3, str.tostring(i_opening_range_duration) + "m OR High Ext3", xloc.bar_index, yloc.price, color.new(i_opening_range_h_color, 100), label.style_label_left, i_opening_range_h_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High Ext3") : na
+            self.high_ext3_mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_high_ext3_mid, right_bar_index, range_high_ext3_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+            self.high_ext3_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_high_ext3_mid, str.tostring(i_opening_range_duration) + "m OR High Ext3 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range High Ext3 50%") : na
+            self.low_ext3_mid_line := i_show_mid_levels ? line.new(self.start_bar_index, range_low_ext3_mid, right_bar_index, range_low_ext3_mid, xloc.bar_index, extend.none, i_opening_range_m_color, get_line_style(i_opening_range_m_style), i_opening_range_m_width) : na
+            self.low_ext3_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index, range_low_ext3_mid, str.tostring(i_opening_range_duration) + "m OR Low Ext3 50%", xloc.bar_index, yloc.price, color.new(i_opening_range_m_color, 100), label.style_label_left, i_opening_range_m_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low Ext3 50%") : na
+            self.low_ext3_line := line.new(self.start_bar_index, range_low_ext3, right_bar_index, range_low_ext3, xloc.bar_index, extend.none, i_opening_range_l_color, get_line_style(i_opening_range_l_style), i_opening_range_l_width)
+            self.low_ext3_label := i_show_labels ? label.new(right_bar_index, range_low_ext3, str.tostring(i_opening_range_duration) + "m OR Low Ext3", xloc.bar_index, yloc.price, color.new(i_opening_range_l_color, 100), label.style_label_left, i_opening_range_l_color, size.normal, text.align_left, str.tostring(i_opening_range_duration) + "m Opening Range Low Ext3") : na
+        self.range_closed := true
+
+method extend(OpeningRange self, int right_bar_index) =>
+    // Extend lines
+    if not na(self.high_ext3_line)
+        self.high_ext3_line.set_x2(right_bar_index)
+    if not na(self.high_ext3_mid_line)
+        self.high_ext3_mid_line.set_x2(right_bar_index)
+    if not na(self.high_ext2_line)
+        self.high_ext2_line.set_x2(right_bar_index)
+    if not na(self.high_ext2_mid_line)
+        self.high_ext2_mid_line.set_x2(right_bar_index)
+    if not na(self.high_ext1_line)
+        self.high_ext1_line.set_x2(right_bar_index)
+    if not na(self.high_ext1_mid_line)
+        self.high_ext1_mid_line.set_x2(right_bar_index)
+    if not na(self.high_line)
+        self.high_line.set_x2(right_bar_index)
+    if not na(self.mid_line)
+        self.mid_line.set_x2(right_bar_index)
+    if not na(self.low_line)
+        self.low_line.set_x2(right_bar_index)
+    if not na(self.low_ext1_mid_line)
+        self.low_ext1_mid_line.set_x2(right_bar_index)
+    if not na(self.low_ext1_line)
+        self.low_ext1_line.set_x2(right_bar_index)
+    if not na(self.low_ext2_mid_line)
+        self.low_ext2_mid_line.set_x2(right_bar_index)
+    if not na(self.low_ext2_line)
+        self.low_ext2_line.set_x2(right_bar_index)
+    if not na(self.low_ext3_mid_line)
+        self.low_ext3_mid_line.set_x2(right_bar_index)
+    if not na(self.low_ext3_line)
+        self.low_ext3_line.set_x2(right_bar_index)
+    // Extend labels
+    if not na(self.high_ext3_label)
+        self.high_ext3_label.set_x(right_bar_index)
+    if not na(self.high_ext3_mid_label)
+        self.high_ext3_mid_label.set_x(right_bar_index)
+    if not na(self.high_ext2_label)
+        self.high_ext2_label.set_x(right_bar_index)
+    if not na(self.high_ext2_mid_label)
+        self.high_ext2_mid_label.set_x(right_bar_index)
+    if not na(self.high_ext1_label)
+        self.high_ext1_label.set_x(right_bar_index)
+    if not na(self.high_ext1_mid_label)
+        self.high_ext1_mid_label.set_x(right_bar_index)
+    if not na(self.high_label)
+        self.high_label.set_x(right_bar_index)
+    if not na(self.mid_label)
+        self.mid_label.set_x(right_bar_index)
+    if not na(self.low_label)
+        self.low_label.set_x(right_bar_index)
+    if not na(self.low_ext1_mid_label)
+        self.low_ext1_mid_label.set_x(right_bar_index)
+    if not na(self.low_ext1_label)
+        self.low_ext1_label.set_x(right_bar_index)
+    if not na(self.low_ext2_mid_label)
+        self.low_ext2_mid_label.set_x(right_bar_index)
+    if not na(self.low_ext2_label)
+        self.low_ext2_label.set_x(right_bar_index)
+    if not na(self.low_ext3_mid_label)
+        self.low_ext3_mid_label.set_x(right_bar_index)
+    if not na(self.low_ext3_label)
+        self.low_ext3_label.set_x(right_bar_index)
+
+method cleanup_labels(OpeningRange self) =>
+    // Cleanup labels
+    if not na(self.high_ext3_label)
+        self.high_ext3_label.delete()
+        self.high_ext3_label := na
+    if not na(self.high_ext3_mid_label)
+        self.high_ext3_mid_label.delete()
+        self.high_ext3_mid_label := na
+    if not na(self.high_ext2_label)
+        self.high_ext2_label.delete()
+        self.high_ext2_label := na
+    if not na(self.high_ext2_mid_label)
+        self.high_ext2_mid_label.delete()
+        self.high_ext2_mid_label := na
+    if not na(self.high_ext1_label)
+        self.high_ext1_label.delete()
+        self.high_ext1_label := na
+    if not na(self.high_ext1_mid_label)
+        self.high_ext1_mid_label.delete()
+        self.high_ext1_mid_label := na
+    if not na(self.high_label)
+        self.high_label.delete()
+        self.high_label := na
+    if not na(self.mid_label)
+        self.mid_label.delete()
+        self.mid_label := na
+    if not na(self.low_label)
+        self.low_label.delete()
+        self.low_label := na
+    if not na(self.low_ext1_mid_label)
+        self.low_ext1_mid_label.delete()
+        self.low_ext1_mid_label := na
+    if not na(self.low_ext1_label)
+        self.low_ext1_label.delete()
+        self.low_ext1_label := na
+    if not na(self.low_ext2_mid_label)
+        self.low_ext2_mid_label.delete()
+        self.low_ext2_mid_label := na
+    if not na(self.low_ext2_label)
+        self.low_ext2_label.delete()
+        self.low_ext2_label := na
+    if not na(self.low_ext3_mid_label)
+        self.low_ext3_mid_label.delete()
+        self.low_ext3_mid_label := na
+    if not na(self.low_ext3_label)
+        self.low_ext3_label.delete()
+        self.low_ext3_label := na
+
+method cleanup(OpeningRange self) =>
+    // Cleanup box
+    if not na(self.range_box)
+        self.range_box.delete()
+        self.range_box := na
+    // Cleanup lines
+    if not na(self.high_ext3_line)
+        self.high_ext3_line.delete()
+        self.high_ext3_line := na
+    if not na(self.high_ext3_mid_line)
+        self.high_ext3_mid_line.delete()
+        self.high_ext3_mid_line := na
+    if not na(self.high_ext2_line)
+        self.high_ext2_line.delete()
+        self.high_ext2_line := na
+    if not na(self.high_ext2_mid_line)
+        self.high_ext2_mid_line.delete()
+        self.high_ext2_mid_line := na
+    if not na(self.high_ext1_line)
+        self.high_ext1_line.delete()
+        self.high_ext1_line := na
+    if not na(self.high_ext1_mid_line)
+        self.high_ext1_mid_line.delete()
+        self.high_ext1_mid_line := na
+    if not na(self.high_line)
+        self.high_line.delete()
+        self.high_line := na
+    if not na(self.mid_line)
+        self.mid_line.delete()
+        self.mid_line := na
+    if not na(self.low_line)
+        self.low_line.delete()
+        self.low_line := na
+    if not na(self.low_ext1_mid_line)
+        self.low_ext1_mid_line.delete()
+        self.low_ext1_mid_line := na
+    if not na(self.low_ext1_line)
+        self.low_ext1_line.delete()
+        self.low_ext1_line := na
+    if not na(self.low_ext2_mid_line)
+        self.low_ext2_mid_line.delete()
+        self.low_ext2_mid_line := na
+    if not na(self.low_ext2_line)
+        self.low_ext2_line.delete()
+        self.low_ext2_line := na
+    if not na(self.low_ext3_mid_line)
+        self.low_ext3_mid_line.delete()
+        self.low_ext3_mid_line := na
+    if not na(self.low_ext3_line)
+        self.low_ext3_line.delete()
+        self.low_ext3_line := na
+    // Cleanup labels
+    self.cleanup_labels()
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Opening Range
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var opening_ranges_list = array.new<OpeningRange>(i_show_num_days)
+
+var string opening_range_session = build_opening_range_session(i_session, i_opening_range_duration)
+var bool show_opening_range = (timeframe.in_seconds() <= (i_opening_range_duration * 60)) and (((i_opening_range_duration * 60) % timeframe.in_seconds()) == 0)
+
+if show_opening_range
+    // Check for entering Opening Range
+    if na(time("", opening_range_session, i_tz, 1)) and not na(time("", opening_range_session, i_tz))
+        // Just entered Opening Range
+        new_opening_range = OpeningRange.new()
+        new_opening_range.initialize(bar_index, high, low)
+        dead_opening_range = opening_ranges_list.shift()
+        opening_ranges_list.push(new_opening_range)
+        if not na(dead_opening_range)
+            dead_opening_range.cleanup()
+    else if not na(time("", opening_range_session, i_tz))
+        // In Opening Range
+        current_opening_range = opening_ranges_list.get(-1)
+        if not na(current_opening_range)
+            current_opening_range.update(bar_index, high, low)
+    else if not na(time("", opening_range_session, i_tz, 1)) and na(time("", opening_range_session, i_tz))
+        // Just left Opening Range
+        current_opening_range = opening_ranges_list.get(-1)
+        if not na(current_opening_range)
+            current_opening_range.confirm(bar_index)
+    else if not na(time("", i_session, i_tz))
+        // Outside Opening Range but still inside Session
+        current_opening_range = opening_ranges_list.get(-1)
+        if not na(current_opening_range)
+            current_opening_range.extend(bar_index)
+    else if not na(time("", i_session, i_tz, 1)) and na(time("", i_session, i_tz))
+        // Just left Session
+        current_opening_range = opening_ranges_list.get(-1)
+        if not na(current_opening_range) and i_show_labels and i_hide_previous_session_labels
+            current_opening_range.cleanup_labels()
