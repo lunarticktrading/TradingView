@@ -8,6 +8,8 @@ indicator("Intraday Levels", overlay = true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.0
+// - Split out Opening Range and Initial Balance into separate indicators
 // v1.0.0
 // - Initial release
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,31 +82,10 @@ i_london_c_color = input.color(color.white, "", inline = "LC", group = LONDON_SE
 i_nyk_session = input.session("0930-1700", "New York Session", inline = "NYK Session", group = NYK_SESSION_GROUP, display = display.none)
 i_nyk_tz = input.string("America/New_York", "", inline = "NYK Session", group = NYK_SESSION_GROUP, display = display.none)
 
-int i_nyk_orb_duration = input.int(15, "Opening Range Duration", minval = 1, maxval = 60, group = NYK_SESSION_GROUP, display = display.none)
-i_show_nyk_orb_box = input.bool(true, "Show Opening Range", inline = "NYK ORB Box", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_orb_color = input.color(color.fuchsia, "", inline = "NYK ORB Box", group = NYK_SESSION_GROUP, active = i_show_nyk_orb_box, display = display.none)
-
-i_show_nyk_orb_h = input.bool(true, "Opening Range High", inline = "NYK_ORH", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_orb_h_color = input.color(color.white, "", inline = "NYK_ORH", group = NYK_SESSION_GROUP, active = i_show_nyk_orb_h, display = display.none)
-i_show_nyk_orb_m = input.bool(true, "Opening Range Mid", inline = "NYK_ORM", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_orb_m_color = input.color(color.white, "", inline = "NYK_ORM", group = NYK_SESSION_GROUP, active = i_show_nyk_orb_m, display = display.none)
-i_show_nyk_orb_l = input.bool(true, "Opening Range Low", inline = "NYK_ORL", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_orb_l_color = input.color(color.white, "", inline = "NYK_ORL", group = NYK_SESSION_GROUP, active = i_show_nyk_orb_l, display = display.none)
-
-i_show_nyk_ib_box = input.bool(true, "Show Initial Balance", inline = "IB Box", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_ib_color = input.color(color.yellow, "", inline = "IB Box", group = NYK_SESSION_GROUP, active = i_show_nyk_ib_box, display = display.none)
-
-i_show_nyk_ib_h = input.bool(true, "Initial Balance High", inline = "NYK_IBH", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_ib_h_color = input.color(color.white, "", inline = "NYK_IBH", group = NYK_SESSION_GROUP, active = i_show_nyk_ib_h, display = display.none)
-i_show_nyk_ib_m = input.bool(true, "Initial Balance Mid", inline = "NYK_IBM", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_ib_m_color = input.color(color.white, "", inline = "NYK_IBM", group = NYK_SESSION_GROUP, active = i_show_nyk_ib_m, display = display.none)
-i_show_nyk_ib_l = input.bool(true, "Initial Balance Low", inline = "NYK_IBL", group = NYK_SESSION_GROUP, display = display.none)
-i_nyk_ib_l_color = input.color(color.white, "", inline = "NYK_IBL", group = NYK_SESSION_GROUP, active = i_show_nyk_ib_l, display = display.none)
-
 i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
 
 enum VersionEnum
-    version = "v1.0.0"
+    version = "v1.1.0"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -115,35 +96,6 @@ VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = dis
 
 request_security_no_repaint(timeframe, expression) =>
     request.security(symbol = syminfo.tickerid, timeframe = timeframe, expression = expression[barstate.isrealtime ? 1 : 0], gaps = barmerge.gaps_off)[barstate.isrealtime ? 0 : 1] // PineCoders best practice.
-
-pad_leading_zeroes(int value, int length) =>
-    string result = str.tostring(value)
-    while str.length(result) < length
-        result := "0" + result
-    result
-
-time_add_minutes(int value, int minutes) =>
-    int result = value
-    int hh = value / 100
-    int mm = value - (hh * 100)
-    mm += minutes
-    if mm > 59
-        hh += 1
-        mm -= 60
-    else if mm < 0
-        hh -= 1
-        mm += 60
-    result := (hh * 100) + mm
-
-build_orb_session(string session, int orb_duration_minutes) =>
-    string orb_session = na
-    int start_time = int(str.tonumber(str.substring(session, 0, 4)))
-    //log.info("START_TIME: [" + str.tostring(start_time) + "]")
-    int end_time = time_add_minutes(start_time, orb_duration_minutes)
-    //log.info("END_TIME: [" + str.tostring(end_time) + "]")
-    orb_session := pad_leading_zeroes(start_time, 4) + "-" + pad_leading_zeroes(end_time, 4)
-    //log.info("ORB_SESSION: [" + orb_session + "]")
-    orb_session
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -170,22 +122,6 @@ var label lbl_london_h = na
 var label lbl_london_l = na
 var label lbl_london_c = na
 
-var float nyk_orb_h = na
-var float nyk_orb_m = na
-var float nyk_orb_l = na
-var bool nyk_orb_closed = false
-var label lbl_nyk_orb_h = na
-var label lbl_nyk_orb_m = na
-var label lbl_nyk_orb_l = na
-
-var float nyk_ib_h = na
-var float nyk_ib_m = na
-var float nyk_ib_l = na
-var bool nyk_ib_closed = false
-var label lbl_nyk_ib_h = na
-var label lbl_nyk_ib_m = na
-var label lbl_nyk_ib_l = na
-
 if barstate.isnew and not na(time("", i_nyk_session, i_nyk_tz, 1)) and na(time("", i_nyk_session, i_nyk_tz, 0))
     asia_o := na
     asia_h := na
@@ -197,14 +133,6 @@ if barstate.isnew and not na(time("", i_nyk_session, i_nyk_tz, 1)) and na(time("
     london_l := na
     london_c := na
     london_closed := false
-    nyk_orb_h := na
-    nyk_orb_m := na
-    nyk_orb_l := na
-    nyk_orb_closed := false
-    nyk_ib_h := na
-    nyk_ib_m := na
-    nyk_ib_l := na
-    nyk_ib_closed := false
     if i_show_labels
         if not na(lbl_asia_o)
             lbl_asia_o.delete()
@@ -230,24 +158,6 @@ if barstate.isnew and not na(time("", i_nyk_session, i_nyk_tz, 1)) and na(time("
         if not na(lbl_london_c)
             lbl_london_c.delete()
             lbl_london_c := na
-        if not na(lbl_nyk_orb_h)
-            lbl_nyk_orb_h.delete()
-            lbl_nyk_orb_h := na
-        if not na(lbl_nyk_orb_m)
-            lbl_nyk_orb_m.delete()
-            lbl_nyk_orb_m := na
-        if not na(lbl_nyk_orb_l)
-            lbl_nyk_orb_l.delete()
-            lbl_nyk_orb_l := na
-        if not na(lbl_nyk_ib_h)
-            lbl_nyk_ib_h.delete()
-            lbl_nyk_ib_h := na
-        if not na(lbl_nyk_ib_m)
-            lbl_nyk_ib_m.delete()
-            lbl_nyk_ib_m := na
-        if not na(lbl_nyk_ib_l)
-            lbl_nyk_ib_l.delete()
-            lbl_nyk_ib_l := na
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -332,100 +242,6 @@ if show_weekly_levels and i_show_labels
         lbl_pwl.set_xy(bar_index, pwl)
     if not na(lbl_pwc)
         lbl_pwc.set_xy(bar_index, pwc)
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// ORB
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-var string nyk_orb_session = build_orb_session(i_nyk_session, i_nyk_orb_duration)
-var bool show_nyk_orb = (timeframe.in_seconds() <= (i_nyk_orb_duration * 60)) and (((i_nyk_orb_duration * 60) % timeframe.in_seconds()) == 0)
-var box nyk_orb_box = na
-
-if show_nyk_orb
-    // Check for entering Opening Range
-    if na(time("", nyk_orb_session, i_nyk_tz, 1)) and not na(time("", nyk_orb_session, i_nyk_tz))
-        // Just entered Opening Range
-        nyk_orb_closed := false
-        nyk_orb_h := high
-        nyk_orb_l := low
-        nyk_orb_m := (nyk_orb_h + nyk_orb_l) / 2.0
-        if i_show_nyk_orb_box
-            nyk_orb_box := box.new(bar_index, nyk_orb_h, bar_index, nyk_orb_l, color.new(i_nyk_orb_color, SESSION_BORDER_TRANSPARENCY), 1, line.style_solid, extend.none, xloc.bar_index, color.new(i_nyk_orb_color, SESSION_BACKGROUND_TRANSPARENCY), str.tostring(i_nyk_orb_duration) + "m ORB", size.normal, color.new(i_nyk_orb_color, SESSION_BORDER_TRANSPARENCY), text.align_center, text.align_top)
-    else if not na(time("", nyk_orb_session, i_nyk_tz))
-        // In Opening Range
-        nyk_orb_h := math.max(high, nyk_orb_h)
-        nyk_orb_l := math.min(low, nyk_orb_l)
-        nyk_orb_m := (nyk_orb_h + nyk_orb_l) / 2.0
-        if i_show_nyk_orb_box
-            nyk_orb_box.set_right(bar_index)
-            nyk_orb_box.set_top(nyk_orb_h)
-            nyk_orb_box.set_bottom(nyk_orb_l)
-    else if not na(time("", nyk_orb_session, i_nyk_tz, 1)) and na(time("", nyk_orb_session, i_nyk_tz))
-        // Just left Opening Range
-        nyk_orb_closed := true
-        lbl_nyk_orb_h := (show_nyk_orb and i_show_nyk_orb_h and i_show_labels) ? label.new(bar_index, nyk_orb_h, str.tostring(i_nyk_orb_duration) + "m ORB High", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_nyk_orb_h_color, size.normal, text.align_left, str.tostring(i_nyk_orb_duration) + "m Opening Range High") : na
-        lbl_nyk_orb_m := (show_nyk_orb and i_show_nyk_orb_m and i_show_labels) ? label.new(bar_index, nyk_orb_m, str.tostring(i_nyk_orb_duration) + "m ORB Mid", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_nyk_orb_m_color, size.normal, text.align_left, str.tostring(i_nyk_orb_duration) + "m Opening Range Mid") : na
-        lbl_nyk_orb_l := (show_nyk_orb and i_show_nyk_orb_l and i_show_labels) ? label.new(bar_index, nyk_orb_l, str.tostring(i_nyk_orb_duration) + "m ORB Low", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_nyk_orb_l_color, size.normal, text.align_left, str.tostring(i_nyk_orb_duration) + "m Opening Range Low") : na
-
-plot(show_nyk_orb and i_show_nyk_orb_h and nyk_orb_closed ? nyk_orb_h : na, "NYK ORB High", i_nyk_orb_h_color, 2, plot.style_steplinebr, offset = 0)
-plot(show_nyk_orb and i_show_nyk_orb_m and nyk_orb_closed ? nyk_orb_m : na, "NYK ORB Mid", i_nyk_orb_m_color, 2, plot.style_steplinebr, linestyle = plot.linestyle_dashed, offset = 0)
-plot(show_nyk_orb and i_show_nyk_orb_l and nyk_orb_closed ? nyk_orb_l : na, "NYK ORB Low", i_nyk_orb_l_color, 2, plot.style_steplinebr, offset = 0)
-
-if show_nyk_orb and i_show_labels
-    if not na(lbl_nyk_orb_h)
-        lbl_nyk_orb_h.set_xy(bar_index, nyk_orb_h)
-    if not na(lbl_nyk_orb_m)
-        lbl_nyk_orb_m.set_xy(bar_index, nyk_orb_m)
-    if not na(lbl_nyk_orb_l)
-        lbl_nyk_orb_l.set_xy(bar_index, nyk_orb_l)
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Initial Balance
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-var string nyk_ib_session = build_orb_session(i_nyk_session, 60)
-var bool show_nyk_ib = (timeframe.in_seconds() <= timeframe.in_seconds("30")) and ((timeframe.in_seconds("30") % timeframe.in_seconds()) == 0)
-var box nyk_ib_box = na
-
-if show_nyk_ib
-    // Check for entering Initial Balance
-    if na(time("", nyk_ib_session, i_nyk_tz, 1)) and not na(time("", nyk_ib_session, i_nyk_tz))
-        // Just entered Initial Balance
-        nyk_ib_closed := false
-        nyk_ib_h := high
-        nyk_ib_l := low
-        nyk_ib_m := (nyk_ib_h + nyk_ib_l) / 2.0
-        if i_show_nyk_ib_box
-            nyk_ib_box := box.new(bar_index, nyk_ib_h, bar_index, nyk_ib_l, color.new(i_nyk_ib_color, SESSION_BORDER_TRANSPARENCY), 1, line.style_solid, extend.none, xloc.bar_index, color.new(i_nyk_ib_color, SESSION_BACKGROUND_TRANSPARENCY), "IB", size.normal, color.new(i_nyk_ib_color, SESSION_BORDER_TRANSPARENCY), text.align_center, text.align_top)
-    else if not na(time("", nyk_ib_session, i_nyk_tz))
-        // In Initial Balance
-        nyk_ib_h := math.max(high, nyk_ib_h)
-        nyk_ib_l := math.min(low, nyk_ib_l)
-        nyk_ib_m := (nyk_ib_h + nyk_ib_l) / 2.0
-        if i_show_nyk_ib_box
-            nyk_ib_box.set_right(bar_index)
-            nyk_ib_box.set_top(nyk_ib_h)
-            nyk_ib_box.set_bottom(nyk_ib_l)
-    else if not na(time("", nyk_ib_session, i_nyk_tz, 1)) and na(time("", nyk_ib_session, i_nyk_tz))
-        // Just left Initial Balance
-        nyk_ib_closed := true
-        lbl_nyk_ib_h := (show_nyk_ib and i_show_nyk_ib_h and i_show_labels) ? label.new(bar_index, nyk_ib_h, "IB High", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_nyk_ib_h_color, size.normal, text.align_left, "Initial Balance High") : na
-        lbl_nyk_ib_m := (show_nyk_ib and i_show_nyk_ib_m and i_show_labels) ? label.new(bar_index, nyk_ib_m, "IB Mid", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_nyk_ib_m_color, size.normal, text.align_left, "Initial Balance Mid") : na
-        lbl_nyk_ib_l := (show_nyk_ib and i_show_nyk_ib_l and i_show_labels) ? label.new(bar_index, nyk_ib_l, "IB Low", xloc.bar_index, yloc.price, color.new(color.black, 100), label.style_label_left, i_nyk_ib_l_color, size.normal, text.align_left, "Initial Balance Low") : na
-
-plot(show_nyk_ib and i_show_nyk_ib_h and nyk_ib_closed ? nyk_ib_h : na, "IB High", i_nyk_ib_h_color, 2, plot.style_steplinebr, offset = 0)
-plot(show_nyk_ib and i_show_nyk_ib_m and nyk_ib_closed ? nyk_ib_m : na, "IB Mid", i_nyk_ib_m_color, 2, plot.style_steplinebr, linestyle = plot.linestyle_dashed, offset = 0)
-plot(show_nyk_ib and i_show_nyk_ib_l and nyk_ib_closed ? nyk_ib_l : na, "IB Low", i_nyk_ib_l_color, 2, plot.style_steplinebr, offset = 0)
-
-if show_nyk_ib and i_show_labels
-    if not na(lbl_nyk_ib_h)
-        lbl_nyk_ib_h.set_xy(bar_index, nyk_ib_h)
-    if not na(lbl_nyk_ib_m)
-        lbl_nyk_ib_m.set_xy(bar_index, nyk_ib_m)
-    if not na(lbl_nyk_ib_l)
-        lbl_nyk_ib_l.set_xy(bar_index, nyk_ib_l)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
