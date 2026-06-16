@@ -11,6 +11,10 @@ indicator("Fair Value Gaps", overlay=true, max_boxes_count = MAX_BOXES)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.0
+// - Show optional border
+// - Show optional 50% line
+// - Show optional label
 // v1.0.0
 // - Initial release
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -64,11 +68,14 @@ color i_bearish_ifvg_color = input.color(color.fuchsia, "Bearish IFVG", group = 
 
 bool i_remove_obsolete_fvg = input.bool(true, "Remove obsolete FVG", group = IFVG_GROUP)
 
-int i_border_transparency = input.int(30, "Border Transparency", minval = 0, maxval = 100, display = display.none, group = DISPLAY_GROUP)
+bool i_show_midline = input.bool(false, "Show 50% line", display = display.none, group = DISPLAY_GROUP)
+bool i_show_border = input.bool(false, "Show border", display = display.none, group = DISPLAY_GROUP)
+bool i_show_label = input.bool(false, "Show label", display = display.none, group = DISPLAY_GROUP)
+int i_line_transparency = input.int(30, "Line Transparency", minval = 0, maxval = 100, display = display.none, group = DISPLAY_GROUP)
 int i_bg_transparency = input.int(60, "Background Transparency", minval = 0, maxval = 100, display = display.none, group = DISPLAY_GROUP)
 
 enum VersionEnum
-    version = "v1.0.0"
+    version = "v1.1.0"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -85,6 +92,7 @@ type FVG
     float bottom
     bool active = true
     box fvg_box = na
+    line mid_line = na
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,18 +101,26 @@ type FVG
 
 method update_fvg_box(FVG self) =>
     if na(self.fvg_box)
-        color border_color = color.new(self.direction == Direction.bullish ? i_bullish_fvg_color : i_bearish_fvg_color, i_border_transparency)
+        color border_color = color.new(self.direction == Direction.bullish ? i_bullish_fvg_color : i_bearish_fvg_color, i_line_transparency)
         color bg_color = color.new(self.direction == Direction.bullish ? i_bullish_fvg_color : i_bearish_fvg_color, i_bg_transparency)
-        self.fvg_box := box.new(self.start_bar_index - 1, self.top, self.start_bar_index + 1, self.bottom, border_color, 1, line.style_solid, extend.none, xloc.bar_index, bg_color, "FVG", size.auto, border_color, text.align_center, text.align_center)
+        self.fvg_box := box.new(self.start_bar_index - 1, self.top, self.start_bar_index + 1, self.bottom, i_show_border ? border_color : color.new(border_color, 100), 1, line.style_solid, extend.none, xloc.bar_index, bg_color, i_show_label ? "FVG" : na, size.auto, border_color, text.align_center, text.align_center)
+        if i_show_midline
+            mid_price = (self.top + self.bottom) / 2.0
+            self.mid_line := line.new(self.start_bar_index - 1, mid_price, self.start_bar_index + 1, mid_price, xloc.bar_index, extend.none, border_color, line.style_dashed, 1, true)
 
-method delete_fvg_box(FVG self) =>
+method delete_fvg(FVG self) =>
     if not na(self.fvg_box)
         box.delete(self.fvg_box)
         self.fvg_box := na
+    if not na(self.mid_line)
+        line.delete(self.mid_line)
+        self.mid_line := na
 
 method extend(FVG self, int right_bar_index) =>
     if self.active and not na(self.fvg_box)
         self.fvg_box.set_right(right_bar_index)
+        if i_show_midline
+            self.mid_line.set_x2(right_bar_index)
         if i_enable_max_length_bars and (right_bar_index - self.start_bar_index) == i_max_length_bars
             self.active := false
 
@@ -112,12 +128,15 @@ method invert(FVG self) =>
     if self.type == FVGType.FVG
         self.type := FVGType.IFVG
         self.direction := (self.direction == Direction.bullish) ? Direction.bearish : Direction.bullish
-        self.fvg_box.set_text("IFVG")
         color bg_color = color.new(self.direction == Direction.bullish ? i_bullish_ifvg_color : i_bearish_ifvg_color, i_bg_transparency)
-        color border_color = color.new(self.direction == Direction.bullish ? i_bullish_ifvg_color : i_bearish_ifvg_color, i_border_transparency)
+        color border_color = color.new(self.direction == Direction.bullish ? i_bullish_ifvg_color : i_bearish_ifvg_color, i_line_transparency)
         self.fvg_box.set_bgcolor(bg_color)
-        self.fvg_box.set_border_color(border_color)
+        self.fvg_box.set_border_color(i_show_border ? border_color : color.new(border_color, 100))
         self.fvg_box.set_text_color(border_color)
+        if i_show_midline
+            self.mid_line.set_color(border_color)
+        if i_show_label
+            self.fvg_box.set_text("IFVG")
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,7 +164,7 @@ remove_inactive_fvg() =>
             if not na(curr_fvg)
                 if curr_fvg.type == FVGType.FVG and not curr_fvg.active
                     // Found obsolete FVG, remove its box and do NOT add to result array.
-                    curr_fvg.delete_fvg_box()
+                    curr_fvg.delete_fvg()
                 else
                     clean_fvg_array.shift()
                     clean_fvg_array.push(curr_fvg)
@@ -155,6 +174,7 @@ remove_inactive_fvg() =>
 ////////////////////////////////////////////////////////////////////////////////
 // Entry Signals
 ////////////////////////////////////////////////////////////////////////////////
+
 
 if barstate.isnew and bar_index > 2
     // Update/extend existing active FVGs
@@ -191,6 +211,6 @@ if barstate.isnew and bar_index > 2
         alert((new_fvg.direction == Direction.bullish ? "Bullish" : "Bearish") +  " FVG created")
         dead_fvg = fvg_array.shift()
         if not na(dead_fvg)
-            dead_fvg.delete_fvg_box()
+            dead_fvg.delete_fvg()
         fvg_array.push(new_fvg)
         new_fvg.update_fvg_box()
