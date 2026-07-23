@@ -1,0 +1,169 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("LunarTick Trend", overlay = true, behind_chart = true, explicit_plot_zorder = true)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v0.1.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Imports
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+import gambcl/LunarTick/1
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var SUPERTREND_GROUP = "SUPERTREND"
+var MACLOUD_GROUP = "MOVING-AVERAGE CLOUD"
+var VIDYA_GROUP = "VIDYA"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum MAType
+    sma = "SMA"
+    ema = "EMA"
+
+enum VersionEnum
+    version = "v0.1.0"
+    
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Trend
+i_bullish_color = input.color(color.green, "Bullish", display = display.none)
+i_bearish_color = input.color(color.red, "Bearish", display = display.none)
+
+// SuperTrend
+i_supertrend_enabled = input.bool(true, "Enable SuperTrend", group = SUPERTREND_GROUP, display = display.none)
+i_supertrend_show = input.bool(false, "Show SuperTrend", group = SUPERTREND_GROUP, display = display.none, active = i_supertrend_enabled)
+i_supertrend_atr_period = input.int(21, "ATR Length", minval = 1, group = SUPERTREND_GROUP, display = display.none, active = i_supertrend_enabled)
+i_supertrend_factor = input.float(3.0, "Factor", minval = 0.01, step = 0.01, group = SUPERTREND_GROUP, display = display.none, active = i_supertrend_enabled)
+i_supertrend_fill_transparency = input.int(90, "Fill Transparency", minval = 0, maxval = 100, group = SUPERTREND_GROUP, display = display.none, active = i_supertrend_enabled)
+
+// MA Cloud
+i_macloud_enabled = input.bool(true, "Enable Moving-Average Cloud", group = MACLOUD_GROUP, display = display.none)
+i_macloud_show = input.bool(true, "Show Moving-Average Cloud", group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+i_macloud_fast_length = input.int(8, "Fast Length", minval = 1, group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+i_macloud_slow_length = input.int(24, "Slow Length", minval = 1, group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+i_macloud_type = input.enum(MAType.ema, "Type", group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+i_macloud_fast_transparency = input.int(0, "Fast Transparency", minval = 0, maxval = 100, group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+i_macloud_slow_transparency = input.int(100, "Slow Transparency", minval = 0, maxval = 100, group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+i_macloud_transparency = input.int(60, "Cloud Transparency", minval = 0, maxval = 100, group = MACLOUD_GROUP, display = display.none, active = i_macloud_enabled)
+
+// VIDYA
+i_vidya_enabled = input.bool(true, "Enable VIDYA", group = VIDYA_GROUP, display = display.none)
+i_vidya_show = input.bool(false, "Show VIDYA", group = VIDYA_GROUP, display = display.none)
+i_vidya_length = input.int(21, "Length", minval = 1, group = VIDYA_GROUP, display = display.none, active = i_vidya_enabled)
+i_vidya_fill_transparency = input.int(90, "Fill Transparency", minval = 0, maxval = 100, group = VIDYA_GROUP, display = display.none, active = i_vidya_enabled)
+
+// Display
+i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
+i_trend_background_enabled = input.bool(true, "Show Trend Background", group = DISPLAY_GROUP, display = display.none)
+i_trend_background_transparency = input.int(90, "Trend Background Transparency", minval = 0, maxval = 100, group = DISPLAY_GROUP, display = display.none, active = i_trend_background_enabled)
+
+// Developer
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+var num_indicators = 0
+     + (i_supertrend_enabled ? 1 : 0)
+     + (i_macloud_enabled ? 1 : 0)
+     + (i_vidya_enabled ? 1 : 0)
+
+var LunarTick.TrendDirection trend_direction = LunarTick.TrendDirection.neutral
+
+int trend_score = 0
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// SuperTrend
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[supertrend, direction] = ta.supertrend(i_supertrend_factor, i_supertrend_atr_period)
+supertrend := barstate.isfirst ? na : supertrend
+plot_supertrend_up = plot(direction < 0 ? supertrend : na, "SuperTrend Up", i_bullish_color, 2, plot.style_linebr, display = i_supertrend_enabled and i_supertrend_show ? display.pane : display.none)
+plot_supertrend_down = plot(direction < 0 ? na : supertrend, "SuperTrend Down", i_bearish_color, 2, plot.style_linebr, display = i_supertrend_enabled and i_supertrend_show ? display.pane : display.none)
+body_middle = plot(barstate.isfirst ? na : (open + close) / 2, "Body Middle", display = display.none)
+fill(body_middle, plot_supertrend_up,   title = "Uptrend background",   color = color.new(color.green, i_supertrend_fill_transparency), fillgaps = false, display = i_supertrend_enabled and i_supertrend_show ? display.all : display.none)
+fill(body_middle, plot_supertrend_down, title = "Downtrend background", color = color.new(color.red,   i_supertrend_fill_transparency), fillgaps = false, display = i_supertrend_enabled and i_supertrend_show ? display.all : display.none)
+trend_score += (i_supertrend_enabled ? ((direction < 0) ? 1 : -1) : 0)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Moving-Average Cloud
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ma_fast = (i_macloud_type == MAType.sma) ? ta.sma(close, i_macloud_fast_length) : ta.ema(close, i_macloud_fast_length)
+ma_slow = (i_macloud_type == MAType.sma) ? ta.sma(close, i_macloud_slow_length) : ta.ema(close, i_macloud_slow_length)
+ma_color = (ma_fast > ma_slow) ? i_bullish_color : i_bearish_color
+
+plot_ma_fast = plot(i_macloud_enabled ? ma_fast : na, "Fast MA", color = color.new(ma_color, i_macloud_fast_transparency), linewidth = 2, display = i_macloud_enabled and i_macloud_show ? display.pane : display.none)
+plot_ma_slow = plot(i_macloud_enabled ? ma_slow : na, "Slow MA", color = color.new(ma_color, i_macloud_slow_transparency), linewidth = 2, display = i_macloud_enabled and i_macloud_show ? display.pane : display.none)
+fill(plot_ma_fast, plot_ma_slow, color.new(ma_color, i_macloud_transparency), "MA Cloud", display = i_macloud_enabled and i_macloud_show ? display.all : display.none)
+trend_score += (i_macloud_enabled ? ((ma_fast > ma_slow) ? 1 : -1) : 0)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// VIDYA
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+chande_momentum_oscillator(source, int length) =>
+    mom = ta.change(source)
+    up_sum = math.sum(math.max(mom, 0), length)
+    down_sum = math.sum(-math.min(mom, 0), length)
+    (up_sum - down_sum) / (up_sum + down_sum)
+
+cmo = math.abs(chande_momentum_oscillator(close, i_vidya_length))
+alpha = 2 / (i_vidya_length + 1)
+
+vidya = 0.0
+vidya := close * alpha * cmo + nz(vidya[1]) * (1 - alpha * cmo)
+
+vidya_color = (vidya[0] > vidya[1]) ? i_bullish_color : i_bearish_color
+plot_vidya = plot(i_vidya_enabled ? vidya : na, "VIDYA", vidya_color, 3, display = i_vidya_enabled and i_vidya_show ? display.pane : display.none)
+fill(plot_vidya, body_middle, color.new(vidya_color, i_vidya_fill_transparency), "VIDYA Fill", display = i_vidya_enabled and i_vidya_show ? display.all : display.none)
+trend_score += (i_vidya_enabled ? ((vidya[0] > vidya[1]) ? 1 : -1) : 0)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Detect Trend Change
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var color bg_color = na
+if trend_score == num_indicators
+    trend_direction := LunarTick.TrendDirection.bullish
+    bg_color := i_bullish_color
+else if trend_score == -num_indicators
+    trend_direction := LunarTick.TrendDirection.bearish
+    bg_color := i_bearish_color
+
+bgcolor(i_trend_background_enabled ? color.new(bg_color, i_trend_background_transparency) : na, title = "Background")
+
+if barstate.isconfirmed 
+    if trend_direction == LunarTick.TrendDirection.bullish and trend_direction[1] != LunarTick.TrendDirection.bullish
+        alert("Trend flipped Bullish on " + syminfo.ticker + " " + LunarTick.format_timeframe_period(timeframe.period))
+        if i_show_labels
+            y = math.min(low, i_supertrend_enabled and i_supertrend_show ? supertrend : low, i_macloud_enabled and i_macloud_show ? ma_slow : low, i_vidya_enabled and i_vidya_show ? vidya : low)
+            label.new(bar_index, y, "Bullish", xloc.bar_index, yloc.price, i_bullish_color, label.style_label_up, color.white, size.normal, text.align_center)
+    else if trend_direction == LunarTick.TrendDirection.bearish and trend_direction[1] != LunarTick.TrendDirection.bearish
+        alert("Trend flipped Bearish on " + syminfo.ticker + " " + LunarTick.format_timeframe_period(timeframe.period))
+        if i_show_labels
+            y = math.max(high, i_supertrend_enabled and i_supertrend_show ? supertrend : high, i_macloud_enabled and i_macloud_show ? ma_slow : high, i_vidya_enabled and i_vidya_show ? vidya : high)
+            label.new(bar_index, y, "Bearish", xloc.bar_index, yloc.price, i_bearish_color, label.style_label_down, color.white, size.normal, text.align_center)
