@@ -1,0 +1,83 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("LunarTick Trend", overlay = true, behind_chart = true, explicit_plot_zorder = true)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v0.1.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Imports
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+import gambcl/LunarTick/1
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum MAType
+    sma = "SMA"
+    ema = "EMA"
+
+enum VersionEnum
+    version = "v1.0.0"
+    
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+i_timeframe = input.timeframe("", "Timeframe")
+i_fast_length = input.int(8, "Fast Length", minval = 1)
+i_slow_length = input.int(24, "Slow Length", minval = 1)
+i_type = input.enum(MAType.ema, "Type")
+
+// Display
+i_bullish_color = input.color(color.green, "Bullish", group = DISPLAY_GROUP, display = display.none)
+i_bearish_color = input.color(color.red, "Bearish", group = DISPLAY_GROUP, display = display.none)
+i_show_retracements = input.bool(true, "Show Retracements", inline = "RETRACEMENTS", group = DISPLAY_GROUP, display = display.none)
+i_retracement_color = input.color(color.yellow, "", inline = "RETRACEMENTS", group = DISPLAY_GROUP, display = display.none)
+i_fast_transparency = input.int(0, "Fast Transparency", minval = 0, maxval = 100, group = DISPLAY_GROUP, display = display.none)
+i_slow_transparency = input.int(100, "Slow Transparency", minval = 0, maxval = 100, group = DISPLAY_GROUP, display = display.none)
+i_transparency = input.int(60, "Cloud Transparency", minval = 0, maxval = 100, group = DISPLAY_GROUP, display = display.none)
+
+// Developer
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Moving-Average Cloud
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var can_display = (timeframe.in_seconds() <= timeframe.in_seconds(i_timeframe))
+[tf_sma_fast, tf_sma_slow, tf_ema_fast, tf_ema_slow] = request.security("", i_timeframe, [ta.sma(close, i_fast_length), ta.sma(close, i_slow_length), ta.ema(close, i_fast_length), ta.ema(close, i_slow_length)], barmerge.gaps_off, barmerge.lookahead_off)
+
+ma_fast = (i_type == MAType.sma) ? tf_sma_fast : tf_ema_fast
+ma_slow = (i_type == MAType.sma) ? tf_sma_slow : tf_ema_slow
+
+
+
+ma_color = ((ma_fast > ma_slow)
+   ? (not i_show_retracements or close >= ma_fast ? i_bullish_color : i_retracement_color)
+   : (not i_show_retracements or close <= ma_fast ? i_bearish_color : i_retracement_color))
+
+plot_ma_fast = plot(can_display ? ma_fast : na, "Fast MA", color = color.new(ma_color, i_fast_transparency), linewidth = 2)
+plot_ma_slow = plot(can_display ? ma_slow : na, "Slow MA", color = color.new(ma_color, i_slow_transparency), linewidth = 2)
+fill(plot_ma_fast, plot_ma_slow, color.new(ma_color, i_transparency), "MA Cloud")
