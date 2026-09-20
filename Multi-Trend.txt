@@ -2,7 +2,7 @@
 // © gambcl
 
 //@version=6
-indicator("LunarTick Multi-Trend", overlay = true, behind_chart = true, explicit_plot_zorder = true)
+indicator("Multi-Trend", overlay = true, behind_chart = true, explicit_plot_zorder = true)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
