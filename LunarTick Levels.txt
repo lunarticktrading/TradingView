@@ -1,0 +1,612 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("LunarTick Levels", overlay = true, max_lines_count = 500)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Imports
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+import gambcl/LunarTick/2
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var DAILY_LEVELS_GROUP = "DAILY LEVELS"
+var SMA_1H_GROUP = "1H MOVING AVERAGES"
+var SMA_4H_GROUP = "4H MOVING AVERAGES"
+var SMA_DAILY_GROUP = "DAILY MOVING AVERAGES"
+var SMA_WEEKLY_GROUP = "WEEKLY MOVING AVERAGES"
+var SMA_MONTHLY_GROUP = "MONTHLY MOVING AVERAGES"
+var SESSIONS_GROUP = "SESSIONS"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+max_bars_back(time, 5000)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum LabelStyle
+    none = "None"
+    label_up = "Label Up"
+    label_down = "Label Down"
+    label_left = "Label Left"
+    label_right = "Label Right"
+    label_lower_left = "Label Lower Left"
+    label_lower_right = "Label Lower Right"
+    label_upper_left = "Label Upper Left"
+    label_upper_right = "Label Upper Right"
+    label_center = "Label Center"
+    text_outline = "Text Outline"
+
+enum LabelSize
+    auto = "Auto"
+    tiny = "Tiny"
+    small = "Small"
+    normal = "Normal"
+    large = "Large"
+    huge = "Huge"
+
+enum LineStyle
+    solid = "Solid"
+    dashed = "Dashed"
+    dotted = "Dotted"
+
+enum VersionEnum
+    version = "v1.0.0"
+    
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Daily Levels
+bool i_op_enabled = input.bool(true, "OP", inline = "OP", group = DAILY_LEVELS_GROUP, display = display.none, tooltip = "Opening Print")
+color i_op_color = input.color(color.purple, "", inline = "OP", group = DAILY_LEVELS_GROUP, display = display.none)
+LineStyle i_op_line_style = input.enum(LineStyle.dashed, "", inline = "OP", group = DAILY_LEVELS_GROUP, display = display.none)
+int i_op_line_width = input.int(2, "", minval = 1, maxval = 4, inline = "OP", group = DAILY_LEVELS_GROUP, display = display.none)
+
+bool i_pdh_enabled = input.bool(true, "PDH", inline = "PDH", group = DAILY_LEVELS_GROUP, display = display.none, tooltip = "Previous Daily High")
+color i_pdh_color = input.color(color.red, "", inline = "PDH", group = DAILY_LEVELS_GROUP, display = display.none)
+LineStyle i_pdh_line_style = input.enum(LineStyle.dashed, "", inline = "PDH", group = DAILY_LEVELS_GROUP, display = display.none)
+int i_pdh_line_width = input.int(2, "", minval = 1, maxval = 4, inline = "PDH", group = DAILY_LEVELS_GROUP, display = display.none)
+
+bool i_pdl_enabled = input.bool(true, "PDL", inline = "PDL", group = DAILY_LEVELS_GROUP, display = display.none, tooltip = "Previous Daily Low")
+color i_pdl_color = input.color(color.green, "", inline = "PDL", group = DAILY_LEVELS_GROUP, display = display.none)
+LineStyle i_pdl_line_style = input.enum(LineStyle.dashed, "", inline = "PDL", group = DAILY_LEVELS_GROUP, display = display.none)
+int i_pdl_line_width = input.int(2, "", minval = 1, maxval = 4, inline = "PDL", group = DAILY_LEVELS_GROUP, display = display.none)
+
+bool i_onh_enabled = input.bool(true, "ONH", inline = "ONH", group = DAILY_LEVELS_GROUP, display = display.none, tooltip = "Overnight High")
+color i_onh_color = input.color(color.gray, "", inline = "ONH", group = DAILY_LEVELS_GROUP, display = display.none)
+LineStyle i_onh_line_style = input.enum(LineStyle.dashed, "", inline = "ONH", group = DAILY_LEVELS_GROUP, display = display.none)
+int i_onh_line_width = input.int(2, "", minval = 1, maxval = 4, inline = "ONH", group = DAILY_LEVELS_GROUP, display = display.none)
+
+bool i_onl_enabled = input.bool(true, "ONL", inline = "ONL", group = DAILY_LEVELS_GROUP, display = display.none, tooltip = "Overnight Low")
+color i_onl_color = input.color(color.gray, "", inline = "ONL", group = DAILY_LEVELS_GROUP, display = display.none)
+LineStyle i_onl_line_style = input.enum(LineStyle.dashed, "", inline = "ONL", group = DAILY_LEVELS_GROUP, display = display.none)
+int i_onl_line_width = input.int(2, "", minval = 1, maxval = 4, inline = "ONL", group = DAILY_LEVELS_GROUP, display = display.none)
+
+// 1H SMA
+bool i_sma1_1h_enabled = input.bool(false, "", inline = "SMA1_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma1_1h_length = input.int(20, "", minval = 1, inline = "SMA1_1H", group = SMA_1H_GROUP, display = display.none)
+color i_sma1_1h_color = input.color(color.fuchsia, "", inline = "SMA1_1H", group = SMA_1H_GROUP, display = display.none)
+LineStyle i_sma1_1h_line_style = input.enum(LineStyle.solid, "", inline = "SMA1_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma1_1h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA1_1H", group = SMA_1H_GROUP, display = display.none)
+
+bool i_sma2_1h_enabled = input.bool(true, "", inline = "SMA2_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma2_1h_length = input.int(50, "", minval = 1, inline = "SMA2_1H", group = SMA_1H_GROUP, display = display.none)
+color i_sma2_1h_color = input.color(color.fuchsia, "", inline = "SMA2_1H", group = SMA_1H_GROUP, display = display.none)
+LineStyle i_sma2_1h_line_style = input.enum(LineStyle.solid, "", inline = "SMA2_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma2_1h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA2_1H", group = SMA_1H_GROUP, display = display.none)
+
+bool i_sma3_1h_enabled = input.bool(true, "", inline = "SMA3_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma3_1h_length = input.int(100, "", minval = 1, inline = "SMA3_1H", group = SMA_1H_GROUP, display = display.none)
+color i_sma3_1h_color = input.color(color.fuchsia, "", inline = "SMA3_1H", group = SMA_1H_GROUP, display = display.none)
+LineStyle i_sma3_1h_line_style = input.enum(LineStyle.solid, "", inline = "SMA3_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma3_1h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA3_1H", group = SMA_1H_GROUP, display = display.none)
+
+bool i_sma4_1h_enabled = input.bool(true, "", inline = "SMA4_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma4_1h_length = input.int(200, "", minval = 1, inline = "SMA4_1H", group = SMA_1H_GROUP, display = display.none)
+color i_sma4_1h_color = input.color(color.fuchsia, "", inline = "SMA4_1H", group = SMA_1H_GROUP, display = display.none)
+LineStyle i_sma4_1h_line_style = input.enum(LineStyle.solid, "", inline = "SMA4_1H", group = SMA_1H_GROUP, display = display.none)
+int i_sma4_1h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA4_1H", group = SMA_1H_GROUP, display = display.none)
+
+// 4H SMA
+bool i_sma1_4h_enabled = input.bool(false, "", inline = "SMA1_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma1_4h_length = input.int(20, "", minval = 1, inline = "SMA1_4H", group = SMA_4H_GROUP, display = display.none)
+color i_sma1_4h_color = input.color(color.maroon, "", inline = "SMA1_4H", group = SMA_4H_GROUP, display = display.none)
+LineStyle i_sma1_4h_line_style = input.enum(LineStyle.solid, "", inline = "SMA1_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma1_4h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA1_4H", group = SMA_4H_GROUP, display = display.none)
+
+bool i_sma2_4h_enabled = input.bool(true, "", inline = "SMA2_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma2_4h_length = input.int(50, "", minval = 1, inline = "SMA2_4H", group = SMA_4H_GROUP, display = display.none)
+color i_sma2_4h_color = input.color(color.maroon, "", inline = "SMA2_4H", group = SMA_4H_GROUP, display = display.none)
+LineStyle i_sma2_4h_line_style = input.enum(LineStyle.solid, "", inline = "SMA2_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma2_4h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA2_4H", group = SMA_4H_GROUP, display = display.none)
+
+bool i_sma3_4h_enabled = input.bool(true, "", inline = "SMA3_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma3_4h_length = input.int(100, "", minval = 1, inline = "SMA3_4H", group = SMA_4H_GROUP, display = display.none)
+color i_sma3_4h_color = input.color(color.maroon, "", inline = "SMA3_4H", group = SMA_4H_GROUP, display = display.none)
+LineStyle i_sma3_4h_line_style = input.enum(LineStyle.solid, "", inline = "SMA3_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma3_4h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA3_4H", group = SMA_4H_GROUP, display = display.none)
+
+bool i_sma4_4h_enabled = input.bool(true, "", inline = "SMA4_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma4_4h_length = input.int(200, "", minval = 1, inline = "SMA4_4H", group = SMA_4H_GROUP, display = display.none)
+color i_sma4_4h_color = input.color(color.maroon, "", inline = "SMA4_4H", group = SMA_4H_GROUP, display = display.none)
+LineStyle i_sma4_4h_line_style = input.enum(LineStyle.solid, "", inline = "SMA4_4H", group = SMA_4H_GROUP, display = display.none)
+int i_sma4_4h_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA4_4H", group = SMA_4H_GROUP, display = display.none)
+
+// Daily SMA
+bool i_sma1_d_enabled = input.bool(false, "", inline = "SMA1_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma1_d_length = input.int(20, "", minval = 1, inline = "SMA1_D", group = SMA_DAILY_GROUP, display = display.none)
+color i_sma1_d_color = input.color(color.blue, "", inline = "SMA1_D", group = SMA_DAILY_GROUP, display = display.none)
+LineStyle i_sma1_d_line_style = input.enum(LineStyle.solid, "", inline = "SMA1_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma1_d_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA1_D", group = SMA_DAILY_GROUP, display = display.none)
+
+bool i_sma2_d_enabled = input.bool(true, "", inline = "SMA2_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma2_d_length = input.int(50, "", minval = 1, inline = "SMA2_D", group = SMA_DAILY_GROUP, display = display.none)
+color i_sma2_d_color = input.color(color.blue, "", inline = "SMA2_D", group = SMA_DAILY_GROUP, display = display.none)
+LineStyle i_sma2_d_line_style = input.enum(LineStyle.solid, "", inline = "SMA2_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma2_d_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA2_D", group = SMA_DAILY_GROUP, display = display.none)
+
+bool i_sma3_d_enabled = input.bool(true, "", inline = "SMA3_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma3_d_length = input.int(100, "", minval = 1, inline = "SMA3_D", group = SMA_DAILY_GROUP, display = display.none)
+color i_sma3_d_color = input.color(color.blue, "", inline = "SMA3_D", group = SMA_DAILY_GROUP, display = display.none)
+LineStyle i_sma3_d_line_style = input.enum(LineStyle.solid, "", inline = "SMA3_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma3_d_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA3_D", group = SMA_DAILY_GROUP, display = display.none)
+
+bool i_sma4_d_enabled = input.bool(true, "", inline = "SMA4_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma4_d_length = input.int(200, "", minval = 1, inline = "SMA4_D", group = SMA_DAILY_GROUP, display = display.none)
+color i_sma4_d_color = input.color(color.blue, "", inline = "SMA4_D", group = SMA_DAILY_GROUP, display = display.none)
+LineStyle i_sma4_d_line_style = input.enum(LineStyle.solid, "", inline = "SMA4_D", group = SMA_DAILY_GROUP, display = display.none)
+int i_sma4_d_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA4_D", group = SMA_DAILY_GROUP, display = display.none)
+
+// Weekly SMA
+bool i_sma1_w_enabled = input.bool(false, "", inline = "SMA1_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma1_w_length = input.int(20, "", minval = 1, inline = "SMA1_W", group = SMA_WEEKLY_GROUP, display = display.none)
+color i_sma1_w_color = input.color(color.navy, "", inline = "SMA1_W", group = SMA_WEEKLY_GROUP, display = display.none)
+LineStyle i_sma1_w_line_style = input.enum(LineStyle.solid, "", inline = "SMA1_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma1_w_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA1_W", group = SMA_WEEKLY_GROUP, display = display.none)
+
+bool i_sma2_w_enabled = input.bool(true, "", inline = "SMA2_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma2_w_length = input.int(50, "", minval = 1, inline = "SMA2_W", group = SMA_WEEKLY_GROUP, display = display.none)
+color i_sma2_w_color = input.color(color.navy, "", inline = "SMA2_W", group = SMA_WEEKLY_GROUP, display = display.none)
+LineStyle i_sma2_w_line_style = input.enum(LineStyle.solid, "", inline = "SMA2_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma2_w_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA2_W", group = SMA_WEEKLY_GROUP, display = display.none)
+
+bool i_sma3_w_enabled = input.bool(true, "", inline = "SMA3_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma3_w_length = input.int(100, "", minval = 1, inline = "SMA3_W", group = SMA_WEEKLY_GROUP, display = display.none)
+color i_sma3_w_color = input.color(color.navy, "", inline = "SMA3_W", group = SMA_WEEKLY_GROUP, display = display.none)
+LineStyle i_sma3_w_line_style = input.enum(LineStyle.solid, "", inline = "SMA3_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma3_w_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA3_W", group = SMA_WEEKLY_GROUP, display = display.none)
+
+bool i_sma4_w_enabled = input.bool(true, "", inline = "SMA4_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma4_w_length = input.int(200, "", minval = 1, inline = "SMA4_W", group = SMA_WEEKLY_GROUP, display = display.none)
+color i_sma4_w_color = input.color(color.navy, "", inline = "SMA4_W", group = SMA_WEEKLY_GROUP, display = display.none)
+LineStyle i_sma4_w_line_style = input.enum(LineStyle.solid, "", inline = "SMA4_W", group = SMA_WEEKLY_GROUP, display = display.none)
+int i_sma4_w_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA4_W", group = SMA_WEEKLY_GROUP, display = display.none)
+
+// Monthly SMA
+bool i_sma1_m_enabled = input.bool(false, "", inline = "SMA1_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma1_m_length = input.int(20, "", minval = 1, inline = "SMA1_M", group = SMA_MONTHLY_GROUP, display = display.none)
+color i_sma1_m_color = input.color(color.gray, "", inline = "SMA1_M", group = SMA_MONTHLY_GROUP, display = display.none)
+LineStyle i_sma1_m_line_style = input.enum(LineStyle.solid, "", inline = "SMA1_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma1_m_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA1_M", group = SMA_MONTHLY_GROUP, display = display.none)
+
+bool i_sma2_m_enabled = input.bool(true, "", inline = "SMA2_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma2_m_length = input.int(50, "", minval = 1, inline = "SMA2_M", group = SMA_MONTHLY_GROUP, display = display.none)
+color i_sma2_m_color = input.color(color.gray, "", inline = "SMA2_M", group = SMA_MONTHLY_GROUP, display = display.none)
+LineStyle i_sma2_m_line_style = input.enum(LineStyle.solid, "", inline = "SMA2_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma2_m_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA2_M", group = SMA_MONTHLY_GROUP, display = display.none)
+
+bool i_sma3_m_enabled = input.bool(true, "", inline = "SMA3_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma3_m_length = input.int(100, "", minval = 1, inline = "SMA3_M", group = SMA_MONTHLY_GROUP, display = display.none)
+color i_sma3_m_color = input.color(color.gray, "", inline = "SMA3_M", group = SMA_MONTHLY_GROUP, display = display.none)
+LineStyle i_sma3_m_line_style = input.enum(LineStyle.solid, "", inline = "SMA3_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma3_m_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA3_M", group = SMA_MONTHLY_GROUP, display = display.none)
+
+bool i_sma4_m_enabled = input.bool(true, "", inline = "SMA4_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma4_m_length = input.int(200, "", minval = 1, inline = "SMA4_M", group = SMA_MONTHLY_GROUP, display = display.none)
+color i_sma4_m_color = input.color(color.gray, "", inline = "SMA4_M", group = SMA_MONTHLY_GROUP, display = display.none)
+LineStyle i_sma4_m_line_style = input.enum(LineStyle.solid, "", inline = "SMA4_M", group = SMA_MONTHLY_GROUP, display = display.none)
+int i_sma4_m_line_width = input.int(1, "", minval = 1, maxval = 4, inline = "SMA4_M", group = SMA_MONTHLY_GROUP, display = display.none)
+
+// Sessions
+string i_timezone = input.string("America/New_York", "Timezone", group = SESSIONS_GROUP, display = display.none)
+string i_eth_session = input.session("1800-1700", "Electronic Trading Hours", group = SESSIONS_GROUP, display = display.none)
+string i_rth_session = input.session("0930-1700", "Regular Trading Hours", group = SESSIONS_GROUP, display = display.none)
+color i_eth_bg_color = input.color(color.new(color.orange, 85), "Electronic Trading Hours Background", group = SESSIONS_GROUP, display = display.none)
+
+// Display
+bool i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
+int i_label_offset = input.int(15, "Label Offset", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+LabelStyle i_label_style = input.enum(LabelStyle.label_left, "Label Style", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+LabelSize i_label_size = input.enum(LabelSize.normal, "Label Size", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+int i_label_bg_transparency = input.int(0, "Label Transparency", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+color i_label_text_color = input.color(color.white, "Label Text Color", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+
+// Developer
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+can_show_timeframe(string tf) =>
+    timeframe.in_seconds(tf) >= timeframe.in_seconds()
+
+get_label_style(LabelStyle lbl_style) =>
+    switch lbl_style
+        LabelStyle.none => label.style_none
+        LabelStyle.label_up => label.style_label_up
+        LabelStyle.label_down => label.style_label_down
+        LabelStyle.label_left => label.style_label_left
+        LabelStyle.label_right => label.style_label_right
+        LabelStyle.label_lower_left => label.style_label_lower_left
+        LabelStyle.label_lower_right => label.style_label_lower_right
+        LabelStyle.label_upper_left => label.style_label_upper_left
+        LabelStyle.label_upper_right => label.style_label_upper_right
+        LabelStyle.label_center => label.style_label_center
+        LabelStyle.text_outline => label.style_text_outline
+        => label.style_none
+
+get_label_textalign(LabelStyle lbl_style) =>
+    switch lbl_style
+        LabelStyle.label_left => text.align_left
+        LabelStyle.label_right => text.align_right
+        LabelStyle.label_lower_left => text.align_left
+        LabelStyle.label_lower_right => text.align_right
+        LabelStyle.label_upper_left => text.align_left
+        LabelStyle.label_upper_right => text.align_right
+        => text.align_center
+
+get_label_size(LabelSize lbl_size) =>
+    switch lbl_size
+        LabelSize.auto => size.auto
+        LabelSize.tiny => size.tiny
+        LabelSize.small => size.small
+        LabelSize.normal => size.normal
+        LabelSize.large => size.large
+        LabelSize.huge => size.huge
+        => size.auto
+
+get_line_style(LineStyle line_style) =>
+    switch line_style
+        LineStyle.solid => line.style_solid
+        LineStyle.dashed => line.style_dashed
+        LineStyle.dotted => line.style_dotted
+        => line.style_solid
+
+update_line_and_label(bool enabled, line ln, label lbl, int line_start_bar_index, string line_style, int line_width, string line_extend, float value, string name, color color, string tooltip) =>
+    line result_ln = ln
+    label result_lbl = lbl
+    if enabled
+        // Line
+        string result_ln_extend = (bar_index == line_start_bar_index) ? extend.none : line_extend
+        if na(result_ln)
+            result_ln := line.new(line_start_bar_index, value, bar_index, value, xloc.bar_index, result_ln_extend, color, line_style, line_width)
+        if not na(result_ln)
+            line.set_xy1(result_ln, line_start_bar_index, value)
+            line.set_xy2(result_ln, bar_index, value)
+            line.set_extend(result_ln, result_ln_extend)
+        // Label (optional)
+        if i_show_labels
+            string result_lbl_text = str.tostring(value, format.mintick) + " " + name
+            if na(result_lbl)
+                result_lbl := label.new(bar_index + i_label_offset, value, result_lbl_text, xloc.bar_index, yloc.price, color.new(color, i_label_bg_transparency), get_label_style(i_label_style), i_label_text_color, get_label_size(i_label_size), get_label_textalign(i_label_style), tooltip)
+            if not na(result_lbl)
+                label.set_xy(result_lbl, bar_index + i_label_offset, value)
+                label.set_text(result_lbl, result_lbl_text)
+    [result_ln, result_lbl]
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Initialization
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var bool initialized = false
+var int eth_start_time_hhmm = 0
+var int eth_end_time_hhmm = 0
+var int rth_start_time_hhmm = 0
+var int rth_end_time_hhmm = 0
+once not initialized
+    [eth_start_time_tmp, eth_end_time_tmp] = LunarTick.get_session_times(i_eth_session)
+    eth_start_time_hhmm := eth_start_time_tmp
+    eth_end_time_hhmm := eth_end_time_tmp
+    [rth_start_time_tmp, rth_end_time_tmp] = LunarTick.get_session_times(i_rth_session)
+    rth_start_time_hhmm := rth_start_time_tmp
+    rth_end_time_hhmm := rth_end_time_tmp
+    log.info("ETH start time: " + str.tostring(eth_start_time_hhmm))
+    log.info("ETH end time: " + str.tostring(eth_end_time_hhmm))
+    log.info("RTH start time: " + str.tostring(rth_start_time_hhmm))
+    log.info("RTH end time: " + str.tostring(rth_end_time_hhmm))
+    initialized := true
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Session Background
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+color bg_color = (not na(time("", i_eth_session, i_timezone)) and na(time("", i_rth_session, i_timezone))) ? i_eth_bg_color : na
+bgcolor(bg_color)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Opening Print
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var float op = na
+var int op_bar_index = na
+var line op_line = na
+var label op_label = na
+
+if barstate.isnew and (LunarTick.get_bar_time_hhmm(1, i_timezone) < rth_start_time_hhmm) and (LunarTick.get_bar_time_hhmm(0, i_timezone) == rth_start_time_hhmm)
+    // New RTH session started
+    op := open
+    op_bar_index := bar_index
+
+[op_line_tmp, op_label_tmp] = update_line_and_label(i_op_enabled and can_show_timeframe("D"), op_line, op_label, op_bar_index, get_line_style(i_op_line_style), i_op_line_width, extend.right, op, "OP", i_op_color, "Opening Print")
+op_line := op_line_tmp
+op_label := op_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Previous Daily High/Low
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var float cdh = na
+var int cdh_bar_index = na
+var float pdh = na
+var int pdh_bar_index = na
+var line pdh_line = na
+var label pdh_label = na
+
+var float cdl = na
+var int cdl_bar_index = na
+var float pdl = na
+var int pdl_bar_index = na
+var line pdl_line = na
+var label pdl_label = na
+
+if barstate.isnew and (LunarTick.get_bar_time_hhmm(1, i_timezone) < rth_start_time_hhmm) and (LunarTick.get_bar_time_hhmm(0, i_timezone) == rth_start_time_hhmm)
+    // New RTH session started
+    cdh := high
+    cdh_bar_index := bar_index
+    cdl := low
+    cdl_bar_index := bar_index
+
+if barstate.isnew and na(time("", i_rth_session, i_timezone)) and not na(time("", i_rth_session, i_timezone, 1))
+    // Just left RTH session
+    pdh := cdh
+    pdh_bar_index := cdh_bar_index
+    pdl := cdl
+    pdl_bar_index := cdl_bar_index
+
+if not na(time("", i_rth_session, i_timezone))
+    if high > cdh
+        cdh := high
+        cdh_bar_index := bar_index
+    if low < cdl
+        cdl := low
+        cdl_bar_index := bar_index
+
+[pdh_line_tmp, pdh_label_tmp] = update_line_and_label(i_pdh_enabled and can_show_timeframe("D"), pdh_line, pdh_label, pdh_bar_index, get_line_style(i_pdh_line_style), i_pdh_line_width, extend.right, pdh, "PDH", i_pdh_color, "Previous Daily High")
+pdh_line := pdh_line_tmp
+pdh_label := pdh_label_tmp
+[pdl_line_tmp, pdl_label_tmp] = update_line_and_label(i_pdl_enabled and can_show_timeframe("D"), pdl_line, pdl_label, pdl_bar_index, get_line_style(i_pdl_line_style), i_pdl_line_width, extend.right, pdl, "PDL", i_pdl_color, "Previous Daily Low")
+pdl_line := pdl_line_tmp
+pdl_label := pdl_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Overnight High/Low
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var float conh = na
+var int conh_bar_index = na
+var float ponh = na
+var int ponh_bar_index = na
+var line ponh_line = na
+var label ponh_label = na
+
+var float conl = na
+var int conl_bar_index = na
+var float ponl = na
+var int ponl_bar_index = na
+var line ponl_line = na
+var label ponl_label = na
+
+if barstate.isnew and (LunarTick.get_bar_time_hhmm(1, i_timezone) < eth_start_time_hhmm) and (LunarTick.get_bar_time_hhmm(0, i_timezone) == eth_start_time_hhmm)
+    // New ETH session started
+    conh := high
+    conh_bar_index := bar_index
+    conl := low
+    conl_bar_index := bar_index
+
+if barstate.isnew and (not na(time("", i_eth_session, i_timezone))) and (not na(time("", i_rth_session, i_timezone))) and na(time("", i_rth_session, i_timezone, 1))
+    // Just entered RTH session
+    ponh := conh
+    ponh_bar_index := conh_bar_index
+    ponl := conl
+    ponl_bar_index := conl_bar_index
+
+if not na(time("", i_eth_session, i_timezone)) and na(time("", i_rth_session, i_timezone))
+    if high > conh
+        conh := high
+        conh_bar_index := bar_index
+    if low < conl
+        conl := low
+        conl_bar_index := bar_index
+
+[ponh_line_tmp, ponh_label_tmp] = update_line_and_label(i_onh_enabled and can_show_timeframe("D"), ponh_line, ponh_label, ponh_bar_index, get_line_style(i_onh_line_style), i_onh_line_width, extend.right, ponh, "ONH", i_onh_color, "Overnight High")
+ponh_line := ponh_line_tmp
+ponh_label := ponh_label_tmp
+[ponl_line_tmp, ponl_label_tmp] = update_line_and_label(i_onl_enabled and can_show_timeframe("D"), ponl_line, ponl_label, ponl_bar_index, get_line_style(i_onl_line_style), i_onl_line_width, extend.right, ponl, "ONL", i_onl_color, "Overnight Low")
+ponl_line := ponl_line_tmp
+ponl_label := ponl_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 1H Moving-Averages
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[sma1_1h_value, sma2_1h_value, sma3_1h_value, sma4_1h_value] = request.security("", "60", [ta.sma(close, i_sma1_1h_length), ta.sma(close, i_sma2_1h_length), ta.sma(close, i_sma3_1h_length), ta.sma(close, i_sma4_1h_length)])
+
+var line sma1_1h_line = na
+var line sma2_1h_line = na
+var line sma3_1h_line = na
+var line sma4_1h_line = na
+var label sma1_1h_label = na
+var label sma2_1h_label = na
+var label sma3_1h_label = na
+var label sma4_1h_label = na
+
+[sma1_1h_line_tmp, sma1_1h_label_tmp] = update_line_and_label(i_sma1_1h_enabled and can_show_timeframe("60"), sma1_1h_line, sma1_1h_label, bar_index - 1, get_line_style(i_sma1_1h_line_style), i_sma1_1h_line_width, extend.both, sma1_1h_value, "1H " + str.tostring(i_sma1_1h_length), i_sma1_1h_color, "1H " + str.tostring(i_sma1_1h_length) + " SMA")
+[sma2_1h_line_tmp, sma2_1h_label_tmp] = update_line_and_label(i_sma2_1h_enabled and can_show_timeframe("60"), sma2_1h_line, sma2_1h_label, bar_index - 1, get_line_style(i_sma2_1h_line_style), i_sma2_1h_line_width, extend.both, sma2_1h_value, "1H " + str.tostring(i_sma2_1h_length), i_sma2_1h_color, "1H " + str.tostring(i_sma2_1h_length) + " SMA")
+[sma3_1h_line_tmp, sma3_1h_label_tmp] = update_line_and_label(i_sma3_1h_enabled and can_show_timeframe("60"), sma3_1h_line, sma3_1h_label, bar_index - 1, get_line_style(i_sma3_1h_line_style), i_sma3_1h_line_width, extend.both, sma3_1h_value, "1H " + str.tostring(i_sma3_1h_length), i_sma3_1h_color, "1H " + str.tostring(i_sma3_1h_length) + " SMA")
+[sma4_1h_line_tmp, sma4_1h_label_tmp] = update_line_and_label(i_sma4_1h_enabled and can_show_timeframe("60"), sma4_1h_line, sma4_1h_label, bar_index - 1, get_line_style(i_sma4_1h_line_style), i_sma4_1h_line_width, extend.both, sma4_1h_value, "1H " + str.tostring(i_sma4_1h_length), i_sma4_1h_color, "1H " + str.tostring(i_sma4_1h_length) + " SMA")
+
+sma1_1h_line := sma1_1h_line_tmp
+sma2_1h_line := sma2_1h_line_tmp
+sma3_1h_line := sma3_1h_line_tmp
+sma4_1h_line := sma4_1h_line_tmp
+sma1_1h_label := sma1_1h_label_tmp
+sma2_1h_label := sma2_1h_label_tmp
+sma3_1h_label := sma3_1h_label_tmp
+sma4_1h_label := sma4_1h_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// 4H Moving-Averages
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[sma1_4h_value, sma2_4h_value, sma3_4h_value, sma4_4h_value] = request.security("", "240", [ta.sma(close, i_sma1_4h_length), ta.sma(close, i_sma2_4h_length), ta.sma(close, i_sma3_4h_length), ta.sma(close, i_sma4_4h_length)])
+
+var line sma1_4h_line = na
+var line sma2_4h_line = na
+var line sma3_4h_line = na
+var line sma4_4h_line = na
+var label sma1_4h_label = na
+var label sma2_4h_label = na
+var label sma3_4h_label = na
+var label sma4_4h_label = na
+
+[sma1_4h_line_tmp, sma1_4h_label_tmp] = update_line_and_label(i_sma1_4h_enabled and can_show_timeframe("240"), sma1_4h_line, sma1_4h_label, bar_index - 1, get_line_style(i_sma1_4h_line_style), i_sma1_4h_line_width, extend.both, sma1_4h_value, "4H " + str.tostring(i_sma1_4h_length), i_sma1_4h_color, "4H " + str.tostring(i_sma1_4h_length) + " SMA")
+[sma2_4h_line_tmp, sma2_4h_label_tmp] = update_line_and_label(i_sma2_4h_enabled and can_show_timeframe("240"), sma2_4h_line, sma2_4h_label, bar_index - 1, get_line_style(i_sma2_4h_line_style), i_sma2_4h_line_width, extend.both, sma2_4h_value, "4H " + str.tostring(i_sma2_4h_length), i_sma2_4h_color, "4H " + str.tostring(i_sma2_4h_length) + " SMA")
+[sma3_4h_line_tmp, sma3_4h_label_tmp] = update_line_and_label(i_sma3_4h_enabled and can_show_timeframe("240"), sma3_4h_line, sma3_4h_label, bar_index - 1, get_line_style(i_sma3_4h_line_style), i_sma3_4h_line_width, extend.both, sma3_4h_value, "4H " + str.tostring(i_sma3_4h_length), i_sma3_4h_color, "4H " + str.tostring(i_sma3_4h_length) + " SMA")
+[sma4_4h_line_tmp, sma4_4h_label_tmp] = update_line_and_label(i_sma4_4h_enabled and can_show_timeframe("240"), sma4_4h_line, sma4_4h_label, bar_index - 1, get_line_style(i_sma4_4h_line_style), i_sma4_4h_line_width, extend.both, sma4_4h_value, "4H " + str.tostring(i_sma4_4h_length), i_sma4_4h_color, "4H " + str.tostring(i_sma4_4h_length) + " SMA")
+
+sma1_4h_line := sma1_4h_line_tmp
+sma2_4h_line := sma2_4h_line_tmp
+sma3_4h_line := sma3_4h_line_tmp
+sma4_4h_line := sma4_4h_line_tmp
+sma1_4h_label := sma1_4h_label_tmp
+sma2_4h_label := sma2_4h_label_tmp
+sma3_4h_label := sma3_4h_label_tmp
+sma4_4h_label := sma4_4h_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Daily Moving-Averages
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[sma1_d_value, sma2_d_value, sma3_d_value, sma4_d_value] = request.security("", "D", [ta.sma(close, i_sma1_d_length), ta.sma(close, i_sma2_d_length), ta.sma(close, i_sma3_d_length), ta.sma(close, i_sma4_d_length)])
+
+var line sma1_d_line = na
+var line sma2_d_line = na
+var line sma3_d_line = na
+var line sma4_d_line = na
+var label sma1_d_label = na
+var label sma2_d_label = na
+var label sma3_d_label = na
+var label sma4_d_label = na
+
+[sma1_d_line_tmp, sma1_d_label_tmp] = update_line_and_label(i_sma1_d_enabled and can_show_timeframe("D"), sma1_d_line, sma1_d_label, bar_index - 1, get_line_style(i_sma1_d_line_style), i_sma1_d_line_width, extend.both, sma1_d_value, "D " + str.tostring(i_sma1_d_length), i_sma1_d_color, "D " + str.tostring(i_sma1_d_length) + " SMA")
+[sma2_d_line_tmp, sma2_d_label_tmp] = update_line_and_label(i_sma2_d_enabled and can_show_timeframe("D"), sma2_d_line, sma2_d_label, bar_index - 1, get_line_style(i_sma2_d_line_style), i_sma2_d_line_width, extend.both, sma2_d_value, "D " + str.tostring(i_sma2_d_length), i_sma2_d_color, "D " + str.tostring(i_sma2_d_length) + " SMA")
+[sma3_d_line_tmp, sma3_d_label_tmp] = update_line_and_label(i_sma3_d_enabled and can_show_timeframe("D"), sma3_d_line, sma3_d_label, bar_index - 1, get_line_style(i_sma3_d_line_style), i_sma3_d_line_width, extend.both, sma3_d_value, "D " + str.tostring(i_sma3_d_length), i_sma3_d_color, "D " + str.tostring(i_sma3_d_length) + " SMA")
+[sma4_d_line_tmp, sma4_d_label_tmp] = update_line_and_label(i_sma4_d_enabled and can_show_timeframe("D"), sma4_d_line, sma4_d_label, bar_index - 1, get_line_style(i_sma4_d_line_style), i_sma4_d_line_width, extend.both, sma4_d_value, "D " + str.tostring(i_sma4_d_length), i_sma4_d_color, "D " + str.tostring(i_sma4_d_length) + " SMA")
+
+sma1_d_line := sma1_d_line_tmp
+sma2_d_line := sma2_d_line_tmp
+sma3_d_line := sma3_d_line_tmp
+sma4_d_line := sma4_d_line_tmp
+sma1_d_label := sma1_d_label_tmp
+sma2_d_label := sma2_d_label_tmp
+sma3_d_label := sma3_d_label_tmp
+sma4_d_label := sma4_d_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Weekly Moving-Averages
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[sma1_w_value, sma2_w_value, sma3_w_value, sma4_w_value] = request.security("", "W", [ta.sma(close, i_sma1_w_length), ta.sma(close, i_sma2_w_length), ta.sma(close, i_sma3_w_length), ta.sma(close, i_sma4_w_length)])
+
+var line sma1_w_line = na
+var line sma2_w_line = na
+var line sma3_w_line = na
+var line sma4_w_line = na
+var label sma1_w_label = na
+var label sma2_w_label = na
+var label sma3_w_label = na
+var label sma4_w_label = na
+
+[sma1_w_line_tmp, sma1_w_label_tmp] = update_line_and_label(i_sma1_w_enabled and can_show_timeframe("W"), sma1_w_line, sma1_w_label, bar_index - 1, get_line_style(i_sma1_w_line_style), i_sma1_w_line_width, extend.both, sma1_w_value, "W " + str.tostring(i_sma1_w_length), i_sma1_w_color, "W " + str.tostring(i_sma1_w_length) + " SMA")
+[sma2_w_line_tmp, sma2_w_label_tmp] = update_line_and_label(i_sma2_w_enabled and can_show_timeframe("W"), sma2_w_line, sma2_w_label, bar_index - 1, get_line_style(i_sma2_w_line_style), i_sma2_w_line_width, extend.both, sma2_w_value, "W " + str.tostring(i_sma2_w_length), i_sma2_w_color, "W " + str.tostring(i_sma2_w_length) + " SMA")
+[sma3_w_line_tmp, sma3_w_label_tmp] = update_line_and_label(i_sma3_w_enabled and can_show_timeframe("W"), sma3_w_line, sma3_w_label, bar_index - 1, get_line_style(i_sma3_w_line_style), i_sma3_w_line_width, extend.both, sma3_w_value, "W " + str.tostring(i_sma3_w_length), i_sma3_w_color, "W " + str.tostring(i_sma3_w_length) + " SMA")
+[sma4_w_line_tmp, sma4_w_label_tmp] = update_line_and_label(i_sma4_w_enabled and can_show_timeframe("W"), sma4_w_line, sma4_w_label, bar_index - 1, get_line_style(i_sma4_w_line_style), i_sma4_w_line_width, extend.both, sma4_w_value, "W " + str.tostring(i_sma4_w_length), i_sma4_w_color, "W " + str.tostring(i_sma4_w_length) + " SMA")
+
+sma1_w_line := sma1_w_line_tmp
+sma2_w_line := sma2_w_line_tmp
+sma3_w_line := sma3_w_line_tmp
+sma4_w_line := sma4_w_line_tmp
+sma1_w_label := sma1_w_label_tmp
+sma2_w_label := sma2_w_label_tmp
+sma3_w_label := sma3_w_label_tmp
+sma4_w_label := sma4_w_label_tmp
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Monthly Moving-Averages
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[sma1_m_value, sma2_m_value, sma3_m_value, sma4_m_value] = request.security("", "M", [ta.sma(close, i_sma1_m_length), ta.sma(close, i_sma2_m_length), ta.sma(close, i_sma3_m_length), ta.sma(close, i_sma4_m_length)])
+
+var line sma1_m_line = na
+var line sma2_m_line = na
+var line sma3_m_line = na
+var line sma4_m_line = na
+var label sma1_m_label = na
+var label sma2_m_label = na
+var label sma3_m_label = na
+var label sma4_m_label = na
+
+[sma1_m_line_tmp, sma1_m_label_tmp] = update_line_and_label(i_sma1_m_enabled and can_show_timeframe("M"), sma1_m_line, sma1_m_label, bar_index - 1, get_line_style(i_sma1_m_line_style), i_sma1_m_line_width, extend.both, sma1_m_value, "M " + str.tostring(i_sma1_m_length), i_sma1_m_color, "M " + str.tostring(i_sma1_m_length) + " SMA")
+[sma2_m_line_tmp, sma2_m_label_tmp] = update_line_and_label(i_sma2_m_enabled and can_show_timeframe("M"), sma2_m_line, sma2_m_label, bar_index - 1, get_line_style(i_sma2_m_line_style), i_sma2_m_line_width, extend.both, sma2_m_value, "M " + str.tostring(i_sma2_m_length), i_sma2_m_color, "M " + str.tostring(i_sma2_m_length) + " SMA")
+[sma3_m_line_tmp, sma3_m_label_tmp] = update_line_and_label(i_sma3_m_enabled and can_show_timeframe("M"), sma3_m_line, sma3_m_label, bar_index - 1, get_line_style(i_sma3_m_line_style), i_sma3_m_line_width, extend.both, sma3_m_value, "M " + str.tostring(i_sma3_m_length), i_sma3_m_color, "M " + str.tostring(i_sma3_m_length) + " SMA")
+[sma4_m_line_tmp, sma4_m_label_tmp] = update_line_and_label(i_sma4_m_enabled and can_show_timeframe("M"), sma4_m_line, sma4_m_label, bar_index - 1, get_line_style(i_sma4_m_line_style), i_sma4_m_line_width, extend.both, sma4_m_value, "M " + str.tostring(i_sma4_m_length), i_sma4_m_color, "M " + str.tostring(i_sma4_m_length) + " SMA")
+
+sma1_m_line := sma1_m_line_tmp
+sma2_m_line := sma2_m_line_tmp
+sma3_m_line := sma3_m_line_tmp
+sma4_m_line := sma4_m_line_tmp
+sma1_m_label := sma1_m_label_tmp
+sma2_m_label := sma2_m_label_tmp
+sma3_m_label := sma3_m_label_tmp
+sma4_m_label := sma4_m_label_tmp
