@@ -8,6 +8,8 @@ indicator("LunarTick Levels", overlay = true, max_lines_count = 500)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.0
+// - Support text-only labels
 // v1.0.0
 // - Initial release
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -68,7 +70,7 @@ enum LineStyle
     dotted = "Dotted"
 
 enum VersionEnum
-    version = "v1.0.0"
+    version = "v1.1.0"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +255,7 @@ can_show_timeframe(string tf) =>
 
 get_label_style(LabelStyle lbl_style) =>
     switch lbl_style
-        LabelStyle.none => label.style_none
+        LabelStyle.none => label.style_label_left
         LabelStyle.label_up => label.style_label_up
         LabelStyle.label_down => label.style_label_down
         LabelStyle.label_left => label.style_label_left
@@ -268,6 +270,7 @@ get_label_style(LabelStyle lbl_style) =>
 
 get_label_textalign(LabelStyle lbl_style) =>
     switch lbl_style
+        LabelStyle.none => text.align_left
         LabelStyle.label_left => text.align_left
         LabelStyle.label_right => text.align_right
         LabelStyle.label_lower_left => text.align_left
@@ -275,6 +278,16 @@ get_label_textalign(LabelStyle lbl_style) =>
         LabelStyle.label_upper_left => text.align_left
         LabelStyle.label_upper_right => text.align_right
         => text.align_center
+
+get_label_bg_color(LabelStyle lbl_style, color lbl_color) =>
+    switch lbl_style
+        LabelStyle.none => na
+        => color.new(lbl_color, i_label_bg_transparency)
+
+get_label_text_color(LabelStyle lbl_style, color lbl_color) =>
+    switch lbl_style
+        LabelStyle.none => lbl_color
+        => i_label_text_color
 
 get_label_size(LabelSize lbl_size) =>
     switch lbl_size
@@ -309,7 +322,7 @@ update_line_and_label(bool enabled, line ln, label lbl, int line_start_bar_index
         if i_show_labels
             string result_lbl_text = str.tostring(value, format.mintick) + " " + name
             if na(result_lbl)
-                result_lbl := label.new(bar_index + i_label_offset, value, result_lbl_text, xloc.bar_index, yloc.price, color.new(color, i_label_bg_transparency), get_label_style(i_label_style), i_label_text_color, get_label_size(i_label_size), get_label_textalign(i_label_style), tooltip)
+                result_lbl := label.new(bar_index + i_label_offset, value, result_lbl_text, xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, color), get_label_style(i_label_style), get_label_text_color(i_label_style, color), get_label_size(i_label_size), get_label_textalign(i_label_style), tooltip)
             if not na(result_lbl)
                 label.set_xy(result_lbl, bar_index + i_label_offset, value)
                 label.set_text(result_lbl, result_lbl_text)
