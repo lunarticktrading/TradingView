@@ -86,7 +86,7 @@ i_show_ext_levels = input.enum(ShowExtensionLevels.none, "Show Extension Levels"
 i_show_mid_levels = input.bool(true, "Show Mid Levels", group = DISPLAY_GROUP, display = display.none)
 
 i_highlight_initial_balance_region = input.bool(true, "Highlight Initial Balance Region", inline = "IB Region", group = DISPLAY_GROUP, display = display.none)
-i_initial_balance_region_color = input.color(color.new(#b8851f, 67), "", inline = "IB Region", group = DISPLAY_GROUP, display = display.none, active = i_highlight_initial_balance_region)
+i_initial_balance_region_color = input.color(color.new(color.aqua, 67), "", inline = "IB Region", group = DISPLAY_GROUP, display = display.none, active = i_highlight_initial_balance_region)
 
 i_highlight_initial_balance_range = input.bool(false, "Highlight Initial Balance Range", inline = "IB Range", group = DISPLAY_GROUP, display = display.none)
 i_initial_balance_range_color = input.color(color.new(color.aqua, 67), "", inline = "IB Range", group = DISPLAY_GROUP, display = display.none, active = i_highlight_initial_balance_range)
@@ -315,7 +315,7 @@ method confirm_levels(InitialBalance self, int right_bar_index) =>
         self.region_closed := true
 
 method extend(InitialBalance self, int right_bar_index) =>
-    // Extende range
+    // Extend range
     if not na(self.range_box)
         self.range_box.set_right(right_bar_index)
     // Extend lines
