@@ -1,0 +1,534 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("LunarTick ORB", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.1.0
+// - Improved labels
+// - Highlight range
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Imports
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+import gambcl/LunarTick/2
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var SESSION_GROUP = "SESSION"
+var OPENING_RANGE_GROUP = "OPENING RANGE"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum LineStyle
+    solid = "Solid"
+    dashed = "Dashed"
+    dotted = "Dotted"
+
+enum ShowExtensionLevels
+    none = "None"
+    one = "One"
+    two = "Two"
+    three = "Three"
+
+enum LabelStyle
+    none = "None"
+    label_up = "Label Up"
+    label_down = "Label Down"
+    label_left = "Label Left"
+    label_right = "Label Right"
+    label_lower_left = "Label Lower Left"
+    label_lower_right = "Label Lower Right"
+    label_upper_left = "Label Upper Left"
+    label_upper_right = "Label Upper Right"
+    label_center = "Label Center"
+    text_outline = "Text Outline"
+
+enum LabelSize
+    auto = "Auto"
+    tiny = "Tiny"
+    small = "Small"
+    normal = "Normal"
+    large = "Large"
+    huge = "Huge"
+
+enum VersionEnum
+    version = "v1.1.0"
+    
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+i_session = input.session("0930-1700", "Session", group = SESSION_GROUP, display = display.none)
+i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP, display = display.none)
+
+int i_orb_duration = input.int(15, "ORB Duration", minval = 1, maxval = 60, group = OPENING_RANGE_GROUP)
+
+i_show_num_days = input.int(5, "Show Days", group = DISPLAY_GROUP, display = display.none)
+i_show_ext_levels = input.enum(ShowExtensionLevels.none, "Show Extension Levels", group = DISPLAY_GROUP, display = display.none)
+i_show_mid_levels = input.bool(true, "Show Mid Levels", group = DISPLAY_GROUP, display = display.none)
+
+i_highlight_orb_region = input.bool(true, "Highlight ORB Region", inline = "ORB Region", group = DISPLAY_GROUP, display = display.none)
+i_orb_region_color = input.color(color.new(color.fuchsia, 67), "", inline = "ORB Region", group = DISPLAY_GROUP, display = display.none, active = i_highlight_orb_region)
+
+i_highlight_orb_range = input.bool(false, "Highlight ORB Range", inline = "ORB Range", group = DISPLAY_GROUP, display = display.none)
+i_orb_range_color = input.color(color.new(color.fuchsia, 67), "", inline = "ORB Range", group = DISPLAY_GROUP, display = display.none, active = i_highlight_orb_range)
+
+i_orb_h_color = input.color(color.fuchsia, "ORB High", inline = "ORBH", group = DISPLAY_GROUP, display = display.none)
+i_orb_h_style = input.enum(LineStyle.solid, "", inline = "ORBH", group = DISPLAY_GROUP, display = display.none)
+i_orb_h_width = input.int(2, "", minval = 1, maxval = 4, inline = "ORBH", group = DISPLAY_GROUP, display = display.none)
+
+i_orb_m_color = input.color(color.fuchsia, "ORB Mid", inline = "ORBM", group = DISPLAY_GROUP, display = display.none, active = i_show_mid_levels)
+i_orb_m_style = input.enum(LineStyle.dashed, "", inline = "ORBM", group = DISPLAY_GROUP, display = display.none, active = i_show_mid_levels)
+i_orb_m_width = input.int(1, "", minval = 1, maxval = 4, inline = "ORBM", group = DISPLAY_GROUP, display = display.none, active = i_show_mid_levels)
+
+i_orb_l_color = input.color(color.fuchsia, "ORB Low", inline = "ORBL", group = DISPLAY_GROUP, display = display.none)
+i_orb_l_style = input.enum(LineStyle.solid, "", inline = "ORBL", group = DISPLAY_GROUP, display = display.none)
+i_orb_l_width = input.int(2, "", minval = 1, maxval = 4, inline = "ORBL", group = DISPLAY_GROUP, display = display.none)
+
+bool i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
+int i_label_offset = input.int(0, "Label Offset", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+LabelStyle i_label_style = input.enum(LabelStyle.label_left, "Label Style", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+LabelSize i_label_size = input.enum(LabelSize.normal, "Label Size", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+int i_label_bg_transparency = input.int(0, "Label Transparency", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+color i_label_text_color = input.color(color.white, "Label Text Color", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Types
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+type OpeningRange
+    int region_start_bar_index = na
+    int region_end_bar_index = na
+    float region_high = na
+    float region_low = na
+    bool region_closed = false
+    box region_box = na
+    int range_end_bar_index = na
+    box range_box = na
+    line high_ext3_line = na
+    line high_ext3_mid_line = na
+    line high_ext2_line = na
+    line high_ext2_mid_line = na
+    line high_ext1_line = na
+    line high_ext1_mid_line = na
+    line high_line = na
+    line mid_line = na
+    line low_line = na
+    line low_ext1_mid_line = na
+    line low_ext1_line = na
+    line low_ext2_mid_line = na
+    line low_ext2_line = na
+    line low_ext3_mid_line = na
+    line low_ext3_line = na
+    label high_ext3_label = na
+    label high_ext3_mid_label = na
+    label high_ext2_label = na
+    label high_ext2_mid_label = na
+    label high_ext1_label = na
+    label high_ext1_mid_label = na
+    label high_label = na
+    label mid_label = na
+    label low_label = na
+    label low_ext1_mid_label = na
+    label low_ext1_label = na
+    label low_ext2_mid_label = na
+    label low_ext2_label = na
+    label low_ext3_mid_label = na
+    label low_ext3_label = na
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+request_security_no_repaint(timeframe, expression) =>
+    request.security(symbol = syminfo.tickerid, timeframe = timeframe, expression = expression[barstate.isrealtime ? 1 : 0], gaps = barmerge.gaps_off)[barstate.isrealtime ? 0 : 1] // PineCoders best practice.
+
+build_orb_session(string session, int orb_duration_minutes) =>
+    string orb_session = na
+    int start_time = int(str.tonumber(str.substring(session, 0, 4)))
+    //log.info("START_TIME: [" + str.tostring(start_time) + "]")
+    int end_time = LunarTick.time_add_minutes(start_time, orb_duration_minutes)
+    //log.info("END_TIME: [" + str.tostring(end_time) + "]")
+    orb_session := LunarTick.pad_leading_zeroes(start_time, 4) + "-" + LunarTick.pad_leading_zeroes(end_time, 4)
+    //log.info("ORB_SESSION: [" + orb_session + "]")
+    orb_session
+
+get_label_style(LabelStyle lbl_style) =>
+    switch lbl_style
+        LabelStyle.none => label.style_label_left
+        LabelStyle.label_up => label.style_label_up
+        LabelStyle.label_down => label.style_label_down
+        LabelStyle.label_left => label.style_label_left
+        LabelStyle.label_right => label.style_label_right
+        LabelStyle.label_lower_left => label.style_label_lower_left
+        LabelStyle.label_lower_right => label.style_label_lower_right
+        LabelStyle.label_upper_left => label.style_label_upper_left
+        LabelStyle.label_upper_right => label.style_label_upper_right
+        LabelStyle.label_center => label.style_label_center
+        LabelStyle.text_outline => label.style_text_outline
+        => label.style_none
+
+get_label_textalign(LabelStyle lbl_style) =>
+    switch lbl_style
+        LabelStyle.none => text.align_left
+        LabelStyle.label_left => text.align_left
+        LabelStyle.label_right => text.align_right
+        LabelStyle.label_lower_left => text.align_left
+        LabelStyle.label_lower_right => text.align_right
+        LabelStyle.label_upper_left => text.align_left
+        LabelStyle.label_upper_right => text.align_right
+        => text.align_center
+
+get_label_bg_color(LabelStyle lbl_style, color lbl_color) =>
+    switch lbl_style
+        LabelStyle.none => na
+        => color.new(lbl_color, i_label_bg_transparency)
+
+get_label_text_color(LabelStyle lbl_style, color lbl_color) =>
+    switch lbl_style
+        LabelStyle.none => lbl_color
+        => i_label_text_color
+
+get_label_size(LabelSize lbl_size) =>
+    switch lbl_size
+        LabelSize.auto => size.auto
+        LabelSize.tiny => size.tiny
+        LabelSize.small => size.small
+        LabelSize.normal => size.normal
+        LabelSize.large => size.large
+        LabelSize.huge => size.huge
+        => size.auto
+
+get_line_style(LineStyle value) =>
+    switch value
+        LineStyle.dashed => line.style_dashed
+        LineStyle.dotted => line.style_dotted
+        => line.style_solid
+
+get_end_bar_index() =>
+    int end_bar_index = bar_index
+    for i = 1 to 499
+        if na(time("", i_session, i_tz, -i))
+            break
+        end_bar_index := end_bar_index + 1
+    end_bar_index
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Methods
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+method initialize(OpeningRange self, int region_start_bar_index, float region_high, float region_low) =>
+    self.region_start_bar_index := region_start_bar_index
+    self.region_high := region_high
+    self.region_low := region_low
+    self.region_closed := false
+    if i_highlight_orb_region
+        self.region_box := box.new(region_start_bar_index, region_high, region_start_bar_index, region_low, na, 0, line.style_solid, extend.none, xloc.bar_index, i_orb_region_color)
+
+method update_levels(OpeningRange self, int region_end_bar_index, float region_high, float region_low) =>
+    self.region_end_bar_index := region_end_bar_index
+    self.region_high := math.max(region_high, self.region_high)
+    self.region_low := math.min(region_low, self.region_low)
+    if not na(self.range_box)
+        self.range_box.set_right(region_end_bar_index)
+        self.range_box.set_top(self.region_high)
+        self.range_box.set_bottom(self.region_low)
+    if not na(self.region_box)
+        self.region_box.set_right(region_end_bar_index)
+        self.region_box.set_top(self.region_high)
+        self.region_box.set_bottom(self.region_low)
+
+method confirm_levels(OpeningRange self, int right_bar_index) =>
+    if not self.region_closed
+        self.range_end_bar_index := right_bar_index
+        if i_highlight_orb_range
+            self.range_box := box.new(self.region_start_bar_index, self.region_high, right_bar_index, self.region_low, na, 0, line.style_solid, extend.none, xloc.bar_index, i_orb_range_color)
+        range_mid = (self.region_high + self.region_low) / 2.0
+        self.high_line := line.new(self.region_start_bar_index, self.region_high, right_bar_index, self.region_high, xloc.bar_index, extend.none, i_orb_h_color, get_line_style(i_orb_h_style), i_orb_h_width)
+        self.high_label := i_show_labels ? label.new(right_bar_index + i_label_offset, self.region_high, str.tostring(self.region_high, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_h_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_h_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High") : na
+        self.mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_mid, right_bar_index, range_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+        self.mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_mid, str.tostring(range_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Mid") : na
+        self.low_line := line.new(self.region_start_bar_index, self.region_low, right_bar_index, self.region_low, xloc.bar_index, extend.none, i_orb_l_color, get_line_style(i_orb_l_style), i_orb_l_width)
+        self.low_label := i_show_labels ? label.new(right_bar_index + i_label_offset, self.region_low, str.tostring(self.region_low, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_l_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_l_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low") : na
+        if i_show_ext_levels != ShowExtensionLevels.none
+            range_high_ext1 = self.region_high + (self.region_high - self.region_low)
+            range_high_ext1_mid = self.region_high + 0.5 * (self.region_high - self.region_low)
+            range_low_ext1_mid = self.region_low - 0.5 * (self.region_high - self.region_low)
+            range_low_ext1 = self.region_low - (self.region_high - self.region_low)
+            self.high_ext1_line := line.new(self.region_start_bar_index, range_high_ext1, right_bar_index, range_high_ext1, xloc.bar_index, extend.none, i_orb_h_color, get_line_style(i_orb_h_style), i_orb_h_width)
+            self.high_ext1_label := i_show_labels ? label.new(right_bar_index + i_label_offset, range_high_ext1, str.tostring(range_high_ext1, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High Ext1", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_h_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_h_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High Ext1") : na
+            self.high_ext1_mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_high_ext1_mid, right_bar_index, range_high_ext1_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+            self.high_ext1_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_high_ext1_mid, str.tostring(range_high_ext1_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High Ext1 Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High Ext1 Mid") : na
+            self.low_ext1_mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_low_ext1_mid, right_bar_index, range_low_ext1_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+            self.low_ext1_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_low_ext1_mid, str.tostring(range_low_ext1_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low Ext1 Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low Ext1 Mid") : na
+            self.low_ext1_line := line.new(self.region_start_bar_index, range_low_ext1, right_bar_index, range_low_ext1, xloc.bar_index, extend.none, i_orb_l_color, get_line_style(i_orb_l_style), i_orb_l_width)
+            self.low_ext1_label := i_show_labels ? label.new(right_bar_index + i_label_offset, range_low_ext1, str.tostring(range_low_ext1, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low Ext1", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_l_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_l_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low Ext1") : na
+        if i_show_ext_levels == ShowExtensionLevels.two or i_show_ext_levels == ShowExtensionLevels.three
+            range_high_ext2 = self.region_high + 2 * (self.region_high - self.region_low)
+            range_high_ext2_mid = self.region_high + 1.5 * (self.region_high - self.region_low)
+            range_low_ext2_mid = self.region_low - 1.5 * (self.region_high - self.region_low)
+            range_low_ext2 = self.region_low - 2 * (self.region_high - self.region_low)
+            self.high_ext2_line := line.new(self.region_start_bar_index, range_high_ext2, right_bar_index, range_high_ext2, xloc.bar_index, extend.none, i_orb_h_color, get_line_style(i_orb_h_style), i_orb_h_width)
+            self.high_ext2_label := i_show_labels ? label.new(right_bar_index + i_label_offset, range_high_ext2, str.tostring(range_high_ext2, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High Ext2", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_h_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_h_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High Ext2") : na
+            self.high_ext2_mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_high_ext2_mid, right_bar_index, range_high_ext2_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+            self.high_ext2_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_high_ext2_mid, str.tostring(range_high_ext2_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High Ext2 Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High Ext2 Mid") : na
+            self.low_ext2_mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_low_ext2_mid, right_bar_index, range_low_ext2_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+            self.low_ext2_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_low_ext2_mid, str.tostring(range_low_ext2_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low Ext2 Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low Ext2 Mid") : na
+            self.low_ext2_line := line.new(self.region_start_bar_index, range_low_ext2, right_bar_index, range_low_ext2, xloc.bar_index, extend.none, i_orb_l_color, get_line_style(i_orb_l_style), i_orb_l_width)
+            self.low_ext2_label := i_show_labels ? label.new(right_bar_index + i_label_offset, range_low_ext2, str.tostring(range_low_ext2, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low Ext2", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_l_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_l_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low Ext2") : na
+        if i_show_ext_levels == ShowExtensionLevels.three
+            range_high_ext3 = self.region_high + 3 * (self.region_high - self.region_low)
+            range_high_ext3_mid = self.region_high + 2.5 * (self.region_high - self.region_low)
+            range_low_ext3_mid = self.region_low - 2.5 * (self.region_high - self.region_low)
+            range_low_ext3 = self.region_low - 3 * (self.region_high - self.region_low)
+            self.high_ext3_line := line.new(self.region_start_bar_index, range_high_ext3, right_bar_index, range_high_ext3, xloc.bar_index, extend.none, i_orb_h_color, get_line_style(i_orb_h_style), i_orb_h_width)
+            self.high_ext3_label := i_show_labels ? label.new(right_bar_index + i_label_offset, range_high_ext3, str.tostring(range_high_ext3, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High Ext3", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_h_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_h_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High Ext3") : na
+            self.high_ext3_mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_high_ext3_mid, right_bar_index, range_high_ext3_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+            self.high_ext3_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_high_ext3_mid, str.tostring(range_high_ext3_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB High Ext3 Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB High Ext3 Mid") : na
+            self.low_ext3_mid_line := i_show_mid_levels ? line.new(self.region_start_bar_index, range_low_ext3_mid, right_bar_index, range_low_ext3_mid, xloc.bar_index, extend.none, i_orb_m_color, get_line_style(i_orb_m_style), i_orb_m_width) : na
+            self.low_ext3_mid_label := i_show_labels and i_show_mid_levels ? label.new(right_bar_index + i_label_offset, range_low_ext3_mid, str.tostring(range_low_ext3_mid, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low Ext3 Mid", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_m_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_m_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low Ext3 Mid") : na
+            self.low_ext3_line := line.new(self.region_start_bar_index, range_low_ext3, right_bar_index, range_low_ext3, xloc.bar_index, extend.none, i_orb_l_color, get_line_style(i_orb_l_style), i_orb_l_width)
+            self.low_ext3_label := i_show_labels ? label.new(right_bar_index + i_label_offset, range_low_ext3, str.tostring(range_low_ext3, format.mintick) + " " + str.tostring(i_orb_duration) + "m ORB Low Ext3", xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, i_orb_l_color), get_label_style(i_label_style), get_label_text_color(i_label_style, i_orb_l_color), get_label_size(i_label_size), get_label_textalign(i_label_style), str.tostring(i_orb_duration) + "m ORB Low Ext3") : na
+        self.region_closed := true
+
+method extend(OpeningRange self, int right_bar_index) =>
+    // Extend range
+    if not na(self.range_box)
+        self.range_box.set_right(right_bar_index)
+    // Extend lines
+    if not na(self.high_ext3_line)
+        self.high_ext3_line.set_x2(right_bar_index)
+    if not na(self.high_ext3_mid_line)
+        self.high_ext3_mid_line.set_x2(right_bar_index)
+    if not na(self.high_ext2_line)
+        self.high_ext2_line.set_x2(right_bar_index)
+    if not na(self.high_ext2_mid_line)
+        self.high_ext2_mid_line.set_x2(right_bar_index)
+    if not na(self.high_ext1_line)
+        self.high_ext1_line.set_x2(right_bar_index)
+    if not na(self.high_ext1_mid_line)
+        self.high_ext1_mid_line.set_x2(right_bar_index)
+    if not na(self.high_line)
+        self.high_line.set_x2(right_bar_index)
+    if not na(self.mid_line)
+        self.mid_line.set_x2(right_bar_index)
+    if not na(self.low_line)
+        self.low_line.set_x2(right_bar_index)
+    if not na(self.low_ext1_mid_line)
+        self.low_ext1_mid_line.set_x2(right_bar_index)
+    if not na(self.low_ext1_line)
+        self.low_ext1_line.set_x2(right_bar_index)
+    if not na(self.low_ext2_mid_line)
+        self.low_ext2_mid_line.set_x2(right_bar_index)
+    if not na(self.low_ext2_line)
+        self.low_ext2_line.set_x2(right_bar_index)
+    if not na(self.low_ext3_mid_line)
+        self.low_ext3_mid_line.set_x2(right_bar_index)
+    if not na(self.low_ext3_line)
+        self.low_ext3_line.set_x2(right_bar_index)
+    // Extend labels
+    if not na(self.high_ext3_label)
+        self.high_ext3_label.set_x(right_bar_index)
+    if not na(self.high_ext3_mid_label)
+        self.high_ext3_mid_label.set_x(right_bar_index)
+    if not na(self.high_ext2_label)
+        self.high_ext2_label.set_x(right_bar_index)
+    if not na(self.high_ext2_mid_label)
+        self.high_ext2_mid_label.set_x(right_bar_index)
+    if not na(self.high_ext1_label)
+        self.high_ext1_label.set_x(right_bar_index)
+    if not na(self.high_ext1_mid_label)
+        self.high_ext1_mid_label.set_x(right_bar_index)
+    if not na(self.high_label)
+        self.high_label.set_x(right_bar_index)
+    if not na(self.mid_label)
+        self.mid_label.set_x(right_bar_index)
+    if not na(self.low_label)
+        self.low_label.set_x(right_bar_index)
+    if not na(self.low_ext1_mid_label)
+        self.low_ext1_mid_label.set_x(right_bar_index)
+    if not na(self.low_ext1_label)
+        self.low_ext1_label.set_x(right_bar_index)
+    if not na(self.low_ext2_mid_label)
+        self.low_ext2_mid_label.set_x(right_bar_index)
+    if not na(self.low_ext2_label)
+        self.low_ext2_label.set_x(right_bar_index)
+    if not na(self.low_ext3_mid_label)
+        self.low_ext3_mid_label.set_x(right_bar_index)
+    if not na(self.low_ext3_label)
+        self.low_ext3_label.set_x(right_bar_index)
+
+method cleanup_labels(OpeningRange self) =>
+    // Cleanup labels
+    if not na(self.high_ext3_label)
+        self.high_ext3_label.delete()
+        self.high_ext3_label := na
+    if not na(self.high_ext3_mid_label)
+        self.high_ext3_mid_label.delete()
+        self.high_ext3_mid_label := na
+    if not na(self.high_ext2_label)
+        self.high_ext2_label.delete()
+        self.high_ext2_label := na
+    if not na(self.high_ext2_mid_label)
+        self.high_ext2_mid_label.delete()
+        self.high_ext2_mid_label := na
+    if not na(self.high_ext1_label)
+        self.high_ext1_label.delete()
+        self.high_ext1_label := na
+    if not na(self.high_ext1_mid_label)
+        self.high_ext1_mid_label.delete()
+        self.high_ext1_mid_label := na
+    if not na(self.high_label)
+        self.high_label.delete()
+        self.high_label := na
+    if not na(self.mid_label)
+        self.mid_label.delete()
+        self.mid_label := na
+    if not na(self.low_label)
+        self.low_label.delete()
+        self.low_label := na
+    if not na(self.low_ext1_mid_label)
+        self.low_ext1_mid_label.delete()
+        self.low_ext1_mid_label := na
+    if not na(self.low_ext1_label)
+        self.low_ext1_label.delete()
+        self.low_ext1_label := na
+    if not na(self.low_ext2_mid_label)
+        self.low_ext2_mid_label.delete()
+        self.low_ext2_mid_label := na
+    if not na(self.low_ext2_label)
+        self.low_ext2_label.delete()
+        self.low_ext2_label := na
+    if not na(self.low_ext3_mid_label)
+        self.low_ext3_mid_label.delete()
+        self.low_ext3_mid_label := na
+    if not na(self.low_ext3_label)
+        self.low_ext3_label.delete()
+        self.low_ext3_label := na
+
+method cleanup(OpeningRange self) =>
+    // Cleanup range
+    if not na(self.range_box)
+        self.range_box.delete()
+        self.range_box := na
+    // Cleanup region
+    if not na(self.region_box)
+        self.region_box.delete()
+        self.region_box := na
+    // Cleanup lines
+    if not na(self.high_ext3_line)
+        self.high_ext3_line.delete()
+        self.high_ext3_line := na
+    if not na(self.high_ext3_mid_line)
+        self.high_ext3_mid_line.delete()
+        self.high_ext3_mid_line := na
+    if not na(self.high_ext2_line)
+        self.high_ext2_line.delete()
+        self.high_ext2_line := na
+    if not na(self.high_ext2_mid_line)
+        self.high_ext2_mid_line.delete()
+        self.high_ext2_mid_line := na
+    if not na(self.high_ext1_line)
+        self.high_ext1_line.delete()
+        self.high_ext1_line := na
+    if not na(self.high_ext1_mid_line)
+        self.high_ext1_mid_line.delete()
+        self.high_ext1_mid_line := na
+    if not na(self.high_line)
+        self.high_line.delete()
+        self.high_line := na
+    if not na(self.mid_line)
+        self.mid_line.delete()
+        self.mid_line := na
+    if not na(self.low_line)
+        self.low_line.delete()
+        self.low_line := na
+    if not na(self.low_ext1_mid_line)
+        self.low_ext1_mid_line.delete()
+        self.low_ext1_mid_line := na
+    if not na(self.low_ext1_line)
+        self.low_ext1_line.delete()
+        self.low_ext1_line := na
+    if not na(self.low_ext2_mid_line)
+        self.low_ext2_mid_line.delete()
+        self.low_ext2_mid_line := na
+    if not na(self.low_ext2_line)
+        self.low_ext2_line.delete()
+        self.low_ext2_line := na
+    if not na(self.low_ext3_mid_line)
+        self.low_ext3_mid_line.delete()
+        self.low_ext3_mid_line := na
+    if not na(self.low_ext3_line)
+        self.low_ext3_line.delete()
+        self.low_ext3_line := na
+    // Cleanup labels
+    self.cleanup_labels()
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// ORB
+////////////////////////////////////////////////////////////////////////////////////////////////////
+var orbs_list = array.new<OpeningRange>(i_show_num_days)
+
+var string orb_session = build_orb_session(i_session, i_orb_duration)
+var bool show_orb = (timeframe.in_seconds() <= (i_orb_duration * 60)) and (((i_orb_duration * 60) % timeframe.in_seconds()) == 0)
+varip int cached_range_end_bar_index = na
+
+if show_orb
+    // Check for entering ORB
+    if na(time("", orb_session, i_tz, 1)) and not na(time("", orb_session, i_tz))
+        // Just entered ORB
+        new_orb = OpeningRange.new()
+        new_orb.initialize(bar_index, high, low)
+        dead_orb = orbs_list.shift()
+        orbs_list.push(new_orb)
+        if not na(dead_orb)
+            dead_orb.cleanup()
+    else if not na(time("", orb_session, i_tz))
+        // In ORB
+        current_orb = orbs_list.get(-1)
+        if not na(current_orb)
+            current_orb.update_levels(bar_index, high, low)
+    else if not na(time("", orb_session, i_tz, 1)) and na(time("", orb_session, i_tz))
+        // Just left ORB
+        if barstate.isnew
+            cached_range_end_bar_index := get_end_bar_index()
+        current_orb = orbs_list.get(-1)
+        if not na(current_orb)
+            current_orb.confirm_levels(cached_range_end_bar_index)
+    else if not na(time("", i_session, i_tz))
+        // Outside ORB but still inside Session
+        if barstate.isnew
+            cached_range_end_bar_index := get_end_bar_index()
+        current_orb = orbs_list.get(-1)
+        if not na(current_orb)
+            current_orb.extend(cached_range_end_bar_index)
+    else if not na(time("", i_session, i_tz, 1)) and na(time("", i_session, i_tz))
+        // Just left Session
+        current_orb = orbs_list.get(-1)
+        if not na(current_orb) and i_show_labels and i_show_labels
+            current_orb.cleanup_labels()
