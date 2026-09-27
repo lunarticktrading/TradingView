@@ -4,6 +4,8 @@ indicator(title="LunarTick VWAP", overlay=true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.1
+// - Updated to use LunarTick library
 // v1.2.0
 // - Renamed indicator
 // v1.1.1
@@ -14,6 +16,13 @@ indicator(title="LunarTick VWAP", overlay=true)
 // v1.0.0
 // - Initial release
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Imports
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+import gambcl/LunarTick/2
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,20 +113,9 @@ i_alert_on_band2 = input.bool(false, "Alerts on Std Dev 2 interactions", group =
 i_alert_on_band3 = input.bool(false, "Alerts on Std Dev 3 interactions", group = ALERTS_GROUP, active = showBand_3)
 
 enum VersionEnum
-    version = "v1.2.0"
+    version = "v1.2.1"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-// Functions
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-is_bullish(int bars_ago) =>
-    close[bars_ago] >= open[bars_ago]
-
-is_bearish(int bars_ago) =>
-    close[bars_ago] < open[bars_ago]
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,13 +199,13 @@ fill(lowerBand_3_plot, lowerBand_2_plot, title="Std Dev 3 Lower Area", color = i
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bar_in_balance_region = close <= upperBandValue1 and close >= lowerBandValue1
-bar_in_balance_region_color = (i_show_bars_in_balance_region and bar_in_balance_region) ? (is_bullish(0) ? i_bars_in_balance_region_bullish_color : i_bars_in_balance_region_bearish_color) : na
+bar_in_balance_region_color = (i_show_bars_in_balance_region and bar_in_balance_region) ? (LunarTick.is_bullish(0) ? i_bars_in_balance_region_bullish_color : i_bars_in_balance_region_bearish_color) : na
 
 bar_in_bullish_imbalance_region = close > upperBandValue1
-bar_in_bullish_imbalance_region_color = (i_show_bars_in_bullish_imbalance_region and bar_in_bullish_imbalance_region) ? (is_bullish(0) ? i_bars_in_bullish_imbalance_region_bullish_color : i_bars_in_bullish_imbalance_region_bearish_color) : na
+bar_in_bullish_imbalance_region_color = (i_show_bars_in_bullish_imbalance_region and bar_in_bullish_imbalance_region) ? (LunarTick.is_bullish(0) ? i_bars_in_bullish_imbalance_region_bullish_color : i_bars_in_bullish_imbalance_region_bearish_color) : na
 
 bar_in_bearish_imbalance_region = close < lowerBandValue1
-bar_in_bearish_imbalance_region_color = (i_show_bars_in_bearish_imbalance_region and bar_in_bearish_imbalance_region) ? (is_bullish(0) ? i_bars_in_bearish_imbalance_region_bullish_color : i_bars_in_bearish_imbalance_region_bearish_color) : na
+bar_in_bearish_imbalance_region_color = (i_show_bars_in_bearish_imbalance_region and bar_in_bearish_imbalance_region) ? (LunarTick.is_bullish(0) ? i_bars_in_bearish_imbalance_region_bullish_color : i_bars_in_bearish_imbalance_region_bearish_color) : na
 
 touching_vwap = vwapValue <= high and vwapValue >= low
 
@@ -224,7 +222,7 @@ touching_band3_lower = showBand_3 and (lowerBandValue3 <= high and lowerBandValu
 touching_band3 = showBand_3 and (touching_band3_upper or touching_band3_lower)
 
 interaction = i_show_interactions and (touching_vwap or touching_band1 or touching_band2 or touching_band3)
-interaction_bar_color = (i_show_interactions and interaction) ? (is_bullish(0) ? i_interaction_bullish_color : i_interaction_bearish_color) : na
+interaction_bar_color = (i_show_interactions and interaction) ? (LunarTick.is_bullish(0) ? i_interaction_bullish_color : i_interaction_bearish_color) : na
 
 bar_color = (i_show_interactions and interaction) ? interaction_bar_color : 
    (i_show_bars_in_bullish_imbalance_region and bar_in_bullish_imbalance_region ? bar_in_bullish_imbalance_region_color :
