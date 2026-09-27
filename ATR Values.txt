@@ -1,0 +1,247 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © gambcl
+
+//@version=6
+indicator("ATR Values", overlay = true)
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Version History
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.0
+// - Renamed indicator
+// - Removed ADX
+// - Added ATR multipliers and currency values
+// v1.1.1
+// - Improved some settings
+// v1.1.0
+// - Added ATR volatility warnings
+// - Added ADX trend warnings
+// v1.0.0
+// - Initial release
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constants
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var ATR_GROUP = "ATR"
+var ATR_MULTIPLIERS_GROUP = "ATR MULTIPLIERS"
+var DISPLAY_GROUP = "DISPLAY"
+var DEVELOPER_GROUP = "DEVELOPER"
+
+var ATR_COLORS = "ATR_COLORS"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enums
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+enum Position
+    top_left = "Top Left"
+    top_center = "Top Center"
+    top_right = "Top Right"
+    middle_left = "Middle Left"
+    middle_center = "Middle Center"
+    middle_right = "Middle Right"
+    bottom_left = "Bottom Left"
+    bottom_center = "Bottom Center"
+    bottom_right = "Bottom Right"
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Inputs
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// ATR
+int i_atr_length = input.int(14, "ATR Length", display = display.none, group = ATR_GROUP)
+int i_atr_reference_bars_back = input.int(1, "Reference Bars Back", minval=0, display = display.none, group = ATR_GROUP)
+
+bool i_mult1_enabled = input.bool(true, "", inline = "ATR_MULT1", group = ATR_MULTIPLIERS_GROUP, display = display.none)
+float i_mult1_multiplier = input.float(1, "", minval = 0.1, step = 0.1,inline = "ATR_MULT1", group = ATR_MULTIPLIERS_GROUP, display = display.none, active = i_mult1_enabled)
+
+bool i_mult2_enabled = input.bool(false, "", inline = "ATR_MULT2", group = ATR_MULTIPLIERS_GROUP, display = display.none)
+float i_mult2_multiplier = input.float(1.5, "", minval = 0.1, step = 0.1, inline = "ATR_MULT2", group = ATR_MULTIPLIERS_GROUP, display = display.none, active = i_mult2_enabled)
+
+bool i_mult3_enabled = input.bool(false, "", inline = "ATR_MULT3", group = ATR_MULTIPLIERS_GROUP, display = display.none)
+float i_mult3_multiplier = input.float(2, "", minval = 0.1, step = 0.1, inline = "ATR_MULT3", group = ATR_MULTIPLIERS_GROUP, display = display.none, active = i_mult3_enabled)
+
+bool i_mult4_enabled = input.bool(false, "", inline = "ATR_MULT4", group = ATR_MULTIPLIERS_GROUP, display = display.none)
+float i_mult4_multiplier = input.float(3, "", minval = 0.1, step = 0.1, inline = "ATR_MULT4", group = ATR_MULTIPLIERS_GROUP, display = display.none, active = i_mult4_enabled)
+
+// Display
+bool i_round_points_to_mintick = input.bool(false, "Round Point Values", group = DISPLAY_GROUP, display = display.none, tooltip = "Specifies if Point values should be rounded to the closest tick")
+
+color i_atr_text_color = input.color(color.white, "Text/Background Colors", inline = ATR_COLORS, display = display.none, group = DISPLAY_GROUP)
+color i_atr_background_color = input.color(color.new(color.black, 100), "", inline = ATR_COLORS, display = display.none, group = DISPLAY_GROUP)
+
+Position i_tbl_position_raw = input.enum(Position.top_right, "Position", display = display.none, group = DISPLAY_GROUP)
+var string i_tbl_position = switch i_tbl_position_raw
+    Position.top_left => position.top_left
+    Position.top_center => position.top_center
+    Position.top_right => position.top_right
+    Position.middle_left => position.middle_left
+    Position.middle_center => position.middle_center
+    Position.middle_right => position.middle_right
+    Position.bottom_left => position.bottom_left
+    Position.bottom_center => position.bottom_center
+    Position.bottom_right => position.bottom_right
+    => position.top_right
+
+color i_tbl_border_color = input.color(color.new(color.white, 85), "Border Color", display = display.none, group = DISPLAY_GROUP)
+int i_tbl_border_width = input.int(1, "Border Width", minval = 1, display = display.none, group = DISPLAY_GROUP)
+
+enum VersionEnum
+    version = "v1.2.0"
+    
+VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Initialization
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var bool initialized = false
+var string price_format = format.mintick
+
+once not initialized
+    price_format := "0"
+    string mintick_str = str.tostring(syminfo.mintick)
+    int period_pos = str.pos(mintick_str, ".")
+    if not na(period_pos)
+        price_format := price_format + "."
+        int decimal_place = (str.length(mintick_str) - period_pos) - 1
+        for i = 1 to decimal_place by 1
+            price_format := price_format + "#"
+    //log.info("PRICE FORMAT: " + price_format)
+    initialized := true
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Functions
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+get_tbl_rows() => ((i_mult1_enabled ? 1 : 0) + (i_mult2_enabled ? 1 : 0) + (i_mult3_enabled ? 1 : 0) + (i_mult4_enabled ? 1 : 0))
+
+get_cell_alignment(Position pos) =>
+    switch pos
+        Position.top_right => text.align_right
+        Position.middle_right => text.align_right
+        Position.bottom_right => text.align_right
+        Position.top_left => text.align_left
+        Position.middle_left => text.align_left
+        Position.bottom_left => text.align_left
+        Position.top_center => text.align_center
+        Position.middle_center => text.align_center
+        Position.bottom_center => text.align_center
+        => text.align_right
+
+get_points_format() => (i_round_points_to_mintick ? format.mintick : price_format)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Calculations
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+atr = ta.atr(i_atr_length)
+
+get_atr_value_points(int bars_ago, float multiplier) => (multiplier * atr[bars_ago])
+
+get_atr_value_ticks(int bars_ago, float multiplier) => (get_atr_value_points(bars_ago, multiplier) / syminfo.mintick)
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+// Display
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var tbl = table.new(i_tbl_position, 4, get_tbl_rows(), color.new(color.black, 100), i_tbl_border_color, i_tbl_border_width, i_tbl_border_color, i_tbl_border_width)
+if get_tbl_rows() > 0
+    curr_row = 0
+    if i_mult1_enabled
+        // Label
+        tbl.cell_set_text(0, curr_row, (i_mult1_multiplier == 1 ? "" : str.tostring(i_mult1_multiplier) + " x ") + "ATR(" + str.tostring(i_atr_length) + ")")
+        tbl.cell_set_text_color(0, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(0, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(0, curr_row, text.align_right)
+        // Points
+        tbl.cell_set_text(1, curr_row, str.tostring(get_atr_value_points(i_atr_reference_bars_back, i_mult1_multiplier), get_points_format()) + "P")
+        tbl.cell_set_text_color(1, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(1, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(1, curr_row, text.align_right)
+        // Ticks
+        tbl.cell_set_text(2, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult1_multiplier))) + "T")
+        tbl.cell_set_text_color(2, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(2, curr_row, text.align_right)
+        // Currency
+        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult1_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(3, curr_row, text.align_right)
+        curr_row := curr_row + 1
+    if i_mult2_enabled
+        // Label
+        tbl.cell_set_text(0, curr_row, (i_mult2_multiplier == 1 ? "" : str.tostring(i_mult2_multiplier) + " x ") + "ATR(" + str.tostring(i_atr_length) + ")")
+        tbl.cell_set_text_color(0, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(0, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(0, curr_row, text.align_right)
+        // Points
+        tbl.cell_set_text(1, curr_row, str.tostring(get_atr_value_points(i_atr_reference_bars_back, i_mult2_multiplier), get_points_format()) + "P")
+        tbl.cell_set_text_color(1, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(1, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(1, curr_row, text.align_right)
+        // Ticks
+        tbl.cell_set_text(2, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult2_multiplier))) + "T")
+        tbl.cell_set_text_color(2, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(2, curr_row, text.align_right)
+        // Currency
+        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult2_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(3, curr_row, text.align_right)
+        curr_row := curr_row + 1
+    if i_mult3_enabled
+        // Label
+        tbl.cell_set_text(0, curr_row, (i_mult3_multiplier == 1 ? "" : str.tostring(i_mult3_multiplier) + " x ") + "ATR(" + str.tostring(i_atr_length) + ")")
+        tbl.cell_set_text_color(0, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(0, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(0, curr_row, text.align_right)
+        // Points
+        tbl.cell_set_text(1, curr_row, str.tostring(get_atr_value_points(i_atr_reference_bars_back, i_mult3_multiplier), get_points_format()) + "P")
+        tbl.cell_set_text_color(1, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(1, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(1, curr_row, text.align_right)
+        // Ticks
+        tbl.cell_set_text(2, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult3_multiplier))) + "T")
+        tbl.cell_set_text_color(2, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(2, curr_row, text.align_right)
+        // Currency
+        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult3_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(3, curr_row, text.align_right)
+        curr_row := curr_row + 1
+    if i_mult4_enabled
+        // Label
+        tbl.cell_set_text(0, curr_row, (i_mult4_multiplier == 1 ? "" : str.tostring(i_mult4_multiplier) + " x ") + "ATR(" + str.tostring(i_atr_length) + ")")
+        tbl.cell_set_text_color(0, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(0, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(0, curr_row, text.align_right)
+        // Points
+        tbl.cell_set_text(1, curr_row, str.tostring(get_atr_value_points(i_atr_reference_bars_back, i_mult4_multiplier), get_points_format()) + "P")
+        tbl.cell_set_text_color(1, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(1, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(1, curr_row, text.align_right)
+        // Ticks
+        tbl.cell_set_text(2, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult4_multiplier))) + "T")
+        tbl.cell_set_text_color(2, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(2, curr_row, text.align_right)
+        // Currency
+        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult4_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
+        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        tbl.cell_set_text_halign(3, curr_row, text.align_right)
+        curr_row := curr_row + 1
