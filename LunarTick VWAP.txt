@@ -1,9 +1,11 @@
 //@version=6
-indicator(title="VWAP Deluxe", overlay=true)
+indicator(title="LunarTick VWAP", overlay=true)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.0
+// - Renamed indicator
 // v1.1.1
 // - Improved inputs display
 // - Improved plot naming
@@ -102,7 +104,7 @@ i_alert_on_band2 = input.bool(false, "Alerts on Std Dev 2 interactions", group =
 i_alert_on_band3 = input.bool(false, "Alerts on Std Dev 3 interactions", group = ALERTS_GROUP, active = showBand_3)
 
 enum VersionEnum
-    version = "v1.1.1"
+    version = "v1.2.0"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
