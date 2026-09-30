@@ -8,6 +8,8 @@ indicator("LunarTick Initial Balance", overlay = true, max_lines_count = 500, ma
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.0
+// - Added AVWAP
 // v1.1.0
 // - Improved labels
 // - Highlight range
@@ -71,7 +73,7 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.1.0"
+    version = "v1.2.0"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -102,6 +104,9 @@ i_initial_balance_m_width = input.int(1, "", minval = 1, maxval = 4, inline = "I
 i_initial_balance_l_color = input.color(color.red, "Initial Balance Low", inline = "IBL", group = DISPLAY_GROUP, display = display.none)
 i_initial_balance_l_style = input.enum(LineStyle.solid, "", inline = "IBL", group = DISPLAY_GROUP, display = display.none)
 i_initial_balance_l_width = input.int(2, "", minval = 1, maxval = 4, inline = "IBL", group = DISPLAY_GROUP, display = display.none)
+
+bool i_show_avwap = input.bool(false, "Show AVWAP", inline = "AVWAP", group = DISPLAY_GROUP, display = display.none)
+color i_avwap_color = input.color(color.aqua, "", inline = "AVWAP", group = DISPLAY_GROUP, active = i_show_avwap, display = display.none)
 
 bool i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
 int i_label_offset = input.int(0, "Label Offset", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
@@ -531,3 +536,6 @@ if show_initial_balance
         current_initial_balance = initial_balances_list.get(-1)
         if not na(current_initial_balance) and i_show_labels
             current_initial_balance.cleanup_labels()
+
+avwap = ta.vwap(ohlc4, na(time("", i_session, i_tz, 1)) and not na(time("", i_session, i_tz)))
+plot(i_show_avwap and not na(time("", i_session, i_tz)) ? avwap : na, "IB AVWAP", i_avwap_color, 2, plot.style_linebr, display = display.pane)
