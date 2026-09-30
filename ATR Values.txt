@@ -7,6 +7,8 @@ indicator("ATR Values", overlay = true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.1
+// - Corrected rounding of label values
 // v1.2.0
 // - Renamed indicator
 // - Removed ADX
@@ -92,7 +94,7 @@ color i_tbl_border_color = input.color(color.new(color.white, 85), "Border Color
 int i_tbl_border_width = input.int(1, "Border Width", minval = 1, display = display.none, group = DISPLAY_GROUP)
 
 enum VersionEnum
-    version = "v1.2.0"
+    version = "v1.2.1"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -112,7 +114,7 @@ once not initialized
         price_format := price_format + "."
         int decimal_place = (str.length(mintick_str) - period_pos) - 1
         for i = 1 to decimal_place by 1
-            price_format := price_format + "#"
+            price_format := price_format + "0"
     //log.info("PRICE FORMAT: " + price_format)
     initialized := true
 
