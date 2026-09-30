@@ -8,6 +8,8 @@ indicator("LunarTick Levels", overlay = true, max_lines_count = 500)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.1
+// - Prevent mintick rounding of label values
 // v1.2.0
 // - Added option to extend SMA levels
 // v1.1.0
@@ -72,7 +74,7 @@ enum LineStyle
     dotted = "Dotted"
 
 enum VersionEnum
-    version = "v1.2.0"
+    version = "v1.2.1"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -251,6 +253,18 @@ VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = dis
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// Globals
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var bool initialized = false
+var string price_format = format.mintick
+var int eth_start_time_hhmm = 0
+var int eth_end_time_hhmm = 0
+var int rth_start_time_hhmm = 0
+var int rth_end_time_hhmm = 0
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Functions
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -324,7 +338,7 @@ update_line_and_label(bool enabled, line ln, label lbl, int line_start_bar_index
             line.set_extend(result_ln, result_ln_extend)
         // Label (optional)
         if i_show_labels
-            string result_lbl_text = str.tostring(value, format.mintick) + " " + name
+            string result_lbl_text = str.tostring(value, price_format) + " " + name
             if na(result_lbl)
                 result_lbl := label.new(bar_index + i_label_offset, value, result_lbl_text, xloc.bar_index, yloc.price, get_label_bg_color(i_label_style, color), get_label_style(i_label_style), get_label_text_color(i_label_style, color), get_label_size(i_label_size), get_label_textalign(i_label_style), tooltip)
             if not na(result_lbl)
@@ -337,12 +351,16 @@ update_line_and_label(bool enabled, line ln, label lbl, int line_start_bar_index
 // Initialization
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var bool initialized = false
-var int eth_start_time_hhmm = 0
-var int eth_end_time_hhmm = 0
-var int rth_start_time_hhmm = 0
-var int rth_end_time_hhmm = 0
 once not initialized
+    price_format := "0"
+    string mintick_str = str.tostring(syminfo.mintick)
+    int period_pos = str.pos(mintick_str, ".")
+    if not na(period_pos)
+        price_format := price_format + "."
+        int decimal_place = (str.length(mintick_str) - period_pos) - 1
+        for i = 1 to decimal_place by 1
+            price_format := price_format + "0"
+    log.info("PRICE FORMAT: " + price_format)
     [eth_start_time_tmp, eth_end_time_tmp] = LunarTick.get_session_times(i_eth_session)
     eth_start_time_hhmm := eth_start_time_tmp
     eth_end_time_hhmm := eth_end_time_tmp
