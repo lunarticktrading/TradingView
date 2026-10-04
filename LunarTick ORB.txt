@@ -8,6 +8,9 @@ indicator("LunarTick ORB", overlay = true, max_lines_count = 500, max_labels_cou
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.1
+// - Increased max duration
+// - Prevent ORB from extending into the next session
 // v1.2.0
 // - Added AVWAP
 // v1.1.0
@@ -72,7 +75,7 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.2.0"
+    version = "v1.2.1"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,7 +85,7 @@ enum VersionEnum
 i_session = input.session("0930-1700", "Session", group = SESSION_GROUP, display = display.none)
 i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP, display = display.none)
 
-int i_orb_duration = input.int(15, "ORB Duration", minval = 1, maxval = 60, group = OPENING_RANGE_GROUP)
+int i_orb_duration = input.int(15, "ORB Duration", minval = 1, maxval = 1380, group = OPENING_RANGE_GROUP)
 
 i_show_num_days = input.int(5, "Show Days", group = DISPLAY_GROUP, display = display.none)
 i_show_ext_levels = input.enum(ShowExtensionLevels.none, "Show Extension Levels", group = DISPLAY_GROUP, display = display.none)
@@ -501,12 +504,18 @@ var orbs_list = array.new<OpeningRange>(i_show_num_days)
 
 var string orb_session = build_orb_session(i_session, i_orb_duration)
 var bool show_orb = (timeframe.in_seconds() <= (i_orb_duration * 60)) and (((i_orb_duration * 60) % timeframe.in_seconds()) == 0)
+varip int cached_range_start_bar_index = na
 varip int cached_range_end_bar_index = na
 
 if show_orb
     // Check for entering ORB
     if na(time("", orb_session, i_tz, 1)) and not na(time("", orb_session, i_tz))
-        // Just entered ORB
+        // Just entered ORB, truncate current_orb if necessary
+        current_orb = orbs_list.get(-1)
+        if not na(current_orb) and current_orb.range_end_bar_index >= bar_index
+            cached_range_end_bar_index := bar_index - 1
+            current_orb.extend(cached_range_end_bar_index)
+        cached_range_start_bar_index := bar_index
         new_orb = OpeningRange.new()
         new_orb.initialize(bar_index, high, low)
         dead_orb = orbs_list.shift()
