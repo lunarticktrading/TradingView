@@ -8,6 +8,8 @@ indicator("LunarTick ORB", overlay = true, max_lines_count = 500, max_labels_cou
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.3
+// - Changed default session end time
 // v1.2.2
 // - Cleanup labels when truncating ORB
 // - Apply label offset when extending ORB
@@ -78,14 +80,14 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.2.2"
+    version = "v1.2.3"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Inputs
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-i_session = input.session("0930-1700", "Session", group = SESSION_GROUP, display = display.none)
+i_session = input.session("0930-1600", "Session", group = SESSION_GROUP, display = display.none)
 i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP, display = display.none)
 
 int i_orb_duration = input.int(15, "ORB Duration", minval = 1, maxval = 1380, group = OPENING_RANGE_GROUP)
