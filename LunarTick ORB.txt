@@ -8,6 +8,9 @@ indicator("LunarTick ORB", overlay = true, max_lines_count = 500, max_labels_cou
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.2
+// - Cleanup labels when truncating ORB
+// - Apply label offset when extending ORB
 // v1.2.1
 // - Increased max duration
 // - Prevent ORB from extending into the next session
@@ -75,7 +78,7 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.2.1"
+    version = "v1.2.2"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -360,35 +363,35 @@ method extend(OpeningRange self, int right_bar_index) =>
         self.low_ext3_line.set_x2(right_bar_index)
     // Extend labels
     if not na(self.high_ext3_label)
-        self.high_ext3_label.set_x(right_bar_index)
+        self.high_ext3_label.set_x(right_bar_index + i_label_offset)
     if not na(self.high_ext3_mid_label)
-        self.high_ext3_mid_label.set_x(right_bar_index)
+        self.high_ext3_mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.high_ext2_label)
-        self.high_ext2_label.set_x(right_bar_index)
+        self.high_ext2_label.set_x(right_bar_index + i_label_offset)
     if not na(self.high_ext2_mid_label)
-        self.high_ext2_mid_label.set_x(right_bar_index)
+        self.high_ext2_mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.high_ext1_label)
-        self.high_ext1_label.set_x(right_bar_index)
+        self.high_ext1_label.set_x(right_bar_index + i_label_offset)
     if not na(self.high_ext1_mid_label)
-        self.high_ext1_mid_label.set_x(right_bar_index)
+        self.high_ext1_mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.high_label)
-        self.high_label.set_x(right_bar_index)
+        self.high_label.set_x(right_bar_index + i_label_offset)
     if not na(self.mid_label)
-        self.mid_label.set_x(right_bar_index)
+        self.mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_label)
-        self.low_label.set_x(right_bar_index)
+        self.low_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_ext1_mid_label)
-        self.low_ext1_mid_label.set_x(right_bar_index)
+        self.low_ext1_mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_ext1_label)
-        self.low_ext1_label.set_x(right_bar_index)
+        self.low_ext1_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_ext2_mid_label)
-        self.low_ext2_mid_label.set_x(right_bar_index)
+        self.low_ext2_mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_ext2_label)
-        self.low_ext2_label.set_x(right_bar_index)
+        self.low_ext2_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_ext3_mid_label)
-        self.low_ext3_mid_label.set_x(right_bar_index)
+        self.low_ext3_mid_label.set_x(right_bar_index + i_label_offset)
     if not na(self.low_ext3_label)
-        self.low_ext3_label.set_x(right_bar_index)
+        self.low_ext3_label.set_x(right_bar_index + i_label_offset)
 
 method cleanup_labels(OpeningRange self) =>
     // Cleanup labels
@@ -515,6 +518,7 @@ if show_orb
         if not na(current_orb) and current_orb.range_end_bar_index >= bar_index
             cached_range_end_bar_index := bar_index - 1
             current_orb.extend(cached_range_end_bar_index)
+            current_orb.cleanup_labels()
         cached_range_start_bar_index := bar_index
         new_orb = OpeningRange.new()
         new_orb.initialize(bar_index, high, low)
