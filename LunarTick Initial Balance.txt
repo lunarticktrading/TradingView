@@ -8,6 +8,8 @@ indicator("LunarTick Initial Balance", overlay = true, max_lines_count = 500, ma
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.2
+// - Added limits to label offset, transparency
 // v1.2.1
 // - Prevent IB from extending into the next session
 // - Cleanup labels when truncating IB
@@ -76,7 +78,7 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.2.1"
+    version = "v1.2.2"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,10 +114,10 @@ bool i_show_avwap = input.bool(false, "Show AVWAP", inline = "AVWAP", group = DI
 color i_avwap_color = input.color(color.aqua, "", inline = "AVWAP", group = DISPLAY_GROUP, active = i_show_avwap, display = display.none)
 
 bool i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
-int i_label_offset = input.int(0, "Label Offset", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+int i_label_offset = input.int(1, "Label Offset", minval = 1, maxval = 100, group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
 LabelStyle i_label_style = input.enum(LabelStyle.label_left, "Label Style", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
 LabelSize i_label_size = input.enum(LabelSize.normal, "Label Size", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
-int i_label_bg_transparency = input.int(0, "Label Transparency", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
+int i_label_bg_transparency = input.int(0, "Label Transparency", minval = 0, maxval = 100, group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
 color i_label_text_color = input.color(color.white, "Label Text Color", group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
 
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
