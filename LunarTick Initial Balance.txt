@@ -8,6 +8,9 @@ indicator("LunarTick Initial Balance", overlay = true, max_lines_count = 500, ma
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.1
+// - Prevent IB from extending into the next session
+// - Cleanup labels when truncating IB
 // v1.2.0
 // - Added AVWAP
 // v1.1.0
@@ -73,14 +76,14 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.2.0"
+    version = "v1.2.1"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Inputs
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-i_session = input.session("0930-1700", "Session", group = SESSION_GROUP, display = display.none)
+i_session = input.session("0930-1600", "Session", group = SESSION_GROUP, display = display.none)
 i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP, display = display.none)
 
 i_show_num_days = input.int(5, "Show Days", group = DISPLAY_GROUP, display = display.none)
@@ -500,12 +503,19 @@ var initial_balances_list = array.new<InitialBalance>(i_show_num_days)
 
 var string initial_balance_session = build_initial_balance_session(i_session, INITIAL_BALANCE_DURATION)
 var bool show_initial_balance = (timeframe.in_seconds() <= (INITIAL_BALANCE_DURATION * 60)) and (((INITIAL_BALANCE_DURATION * 60) % timeframe.in_seconds()) == 0)
+varip int cached_range_start_bar_index = na
 varip int cached_range_end_bar_index = na
 
 if show_initial_balance
     // Check for entering Initial Balance
     if na(time("", initial_balance_session, i_tz, 1)) and not na(time("", initial_balance_session, i_tz))
-        // Just entered Initial Balance
+        // Just entered Initial Balance, truncate current_initial_balance if necessary
+        current_initial_balance = initial_balances_list.get(-1)
+        if not na(current_initial_balance) and current_initial_balance.range_end_bar_index >= bar_index
+            cached_range_end_bar_index := bar_index - 1
+            current_initial_balance.extend(cached_range_end_bar_index)
+            current_initial_balance.cleanup_labels()
+        cached_range_start_bar_index := bar_index
         new_initial_balance = InitialBalance.new()
         new_initial_balance.initialize(bar_index, high, low)
         dead_initial_balance = initial_balances_list.shift()
