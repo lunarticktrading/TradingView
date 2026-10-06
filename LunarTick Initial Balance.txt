@@ -8,6 +8,8 @@ indicator("LunarTick Initial Balance", overlay = true, max_lines_count = 500, ma
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.3
+// - Improved inputs
 // v1.2.2
 // - Added limits to label offset, transparency
 // v1.2.1
@@ -78,15 +80,15 @@ enum LabelSize
     huge = "Huge"
 
 enum VersionEnum
-    version = "v1.2.2"
+    version = "v1.2.3"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Inputs
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-i_session = input.session("0930-1600", "Session", group = SESSION_GROUP, display = display.none)
-i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP, display = display.none)
+i_session = input.session("0930-1600", "Session", group = SESSION_GROUP)
+i_tz = input.string("America/New_York", "Timezone", group = SESSION_GROUP)
 
 i_show_num_days = input.int(5, "Show Days", group = DISPLAY_GROUP, display = display.none)
 i_show_ext_levels = input.enum(ShowExtensionLevels.none, "Show Extension Levels", group = DISPLAY_GROUP, display = display.none)
