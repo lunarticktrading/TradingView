@@ -8,6 +8,8 @@ indicator("LunarTick Levels", overlay = true, max_lines_count = 500)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.3
+// - Limit max length of lines
 // v1.2.2
 // - Added limits to label offset, transparency
 // v1.2.1
@@ -42,7 +44,9 @@ var SESSIONS_GROUP = "SESSIONS"
 var DISPLAY_GROUP = "DISPLAY"
 var DEVELOPER_GROUP = "DEVELOPER"
 
-max_bars_back(time, 5000)
+var MAX_BARS_BACK = 5000
+
+max_bars_back(time, MAX_BARS_BACK)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +80,7 @@ enum LineStyle
     dotted = "Dotted"
 
 enum VersionEnum
-    version = "v1.2.2"
+    version = "v1.2.3"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,9 +337,9 @@ update_line_and_label(bool enabled, line ln, label lbl, int line_start_bar_index
         // Line
         string result_ln_extend = (bar_index == line_start_bar_index) ? extend.none : line_extend
         if na(result_ln)
-            result_ln := line.new(line_start_bar_index, value, bar_index, value, xloc.bar_index, result_ln_extend, color, line_style, line_width)
+            result_ln := line.new(math.max(line_start_bar_index, bar_index - MAX_BARS_BACK), value, bar_index, value, xloc.bar_index, result_ln_extend, color, line_style, line_width)
         if not na(result_ln)
-            line.set_xy1(result_ln, line_start_bar_index, value)
+            line.set_xy1(result_ln, math.max(line_start_bar_index, bar_index - MAX_BARS_BACK), value)
             line.set_xy2(result_ln, bar_index, value)
             line.set_extend(result_ln, result_ln_extend)
         // Label (optional)
