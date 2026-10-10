@@ -2,12 +2,14 @@
 // © gambcl
 
 //@version=6
-indicator("LunarTick Levels", overlay = true, max_lines_count = 500)
+indicator("LunarTick Levels", overlay = true, max_lines_count = 500, max_labels_count = 500)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.4
+// - Use real OHLC values (in case of Heikin Ashi chart)
 // v1.2.3
 // - Limit max length of lines
 // v1.2.2
@@ -80,7 +82,7 @@ enum LineStyle
     dotted = "Dotted"
 
 enum VersionEnum
-    version = "v1.2.3"
+    version = "v1.2.4"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -389,6 +391,13 @@ bgcolor(bg_color)
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// Real Open/High/Low/Close (in case we are on a Heikin Ashi chart)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+[real_open, real_high, real_low, real_close] = request.security(ticker.standard(syminfo.tickerid), timeframe.period, [open, high, low, close])
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 // Opening Print
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -399,7 +408,7 @@ var label op_label = na
 
 if barstate.isnew and (LunarTick.get_bar_time_hhmm(1, i_timezone) < rth_start_time_hhmm) and (LunarTick.get_bar_time_hhmm(0, i_timezone) == rth_start_time_hhmm)
     // New RTH session started
-    op := open
+    op := real_open
     op_bar_index := bar_index
 
 [op_line_tmp, op_label_tmp] = update_line_and_label(i_op_enabled and can_show_timeframe("D"), op_line, op_label, op_bar_index, get_line_style(i_op_line_style), i_op_line_width, extend.right, op, "OP", i_op_color, "Opening Print")
@@ -427,9 +436,9 @@ var label pdl_label = na
 
 if barstate.isnew and (LunarTick.get_bar_time_hhmm(1, i_timezone) < rth_start_time_hhmm) and (LunarTick.get_bar_time_hhmm(0, i_timezone) == rth_start_time_hhmm)
     // New RTH session started
-    cdh := high
+    cdh := real_high
     cdh_bar_index := bar_index
-    cdl := low
+    cdl := real_low
     cdl_bar_index := bar_index
 
 if barstate.isnew and na(time("", i_rth_session, i_timezone)) and not na(time("", i_rth_session, i_timezone, 1))
@@ -440,11 +449,11 @@ if barstate.isnew and na(time("", i_rth_session, i_timezone)) and not na(time(""
     pdl_bar_index := cdl_bar_index
 
 if not na(time("", i_rth_session, i_timezone))
-    if high > cdh
-        cdh := high
+    if real_high > cdh
+        cdh := real_high
         cdh_bar_index := bar_index
-    if low < cdl
-        cdl := low
+    if real_low < cdl
+        cdl := real_low
         cdl_bar_index := bar_index
 
 [pdh_line_tmp, pdh_label_tmp] = update_line_and_label(i_pdh_enabled and can_show_timeframe("D"), pdh_line, pdh_label, pdh_bar_index, get_line_style(i_pdh_line_style), i_pdh_line_width, extend.right, pdh, "PDH", i_pdh_color, "Previous Daily High")
@@ -475,9 +484,9 @@ var label ponl_label = na
 
 if barstate.isnew and (LunarTick.get_bar_time_hhmm(1, i_timezone) < eth_start_time_hhmm) and (LunarTick.get_bar_time_hhmm(0, i_timezone) == eth_start_time_hhmm)
     // New ETH session started
-    conh := high
+    conh := real_high
     conh_bar_index := bar_index
-    conl := low
+    conl := real_low
     conl_bar_index := bar_index
 
 if barstate.isnew and (not na(time("", i_eth_session, i_timezone))) and (not na(time("", i_rth_session, i_timezone))) and na(time("", i_rth_session, i_timezone, 1))
@@ -488,11 +497,11 @@ if barstate.isnew and (not na(time("", i_eth_session, i_timezone))) and (not na(
     ponl_bar_index := conl_bar_index
 
 if not na(time("", i_eth_session, i_timezone)) and na(time("", i_rth_session, i_timezone))
-    if high > conh
-        conh := high
+    if real_high > conh
+        conh := real_high
         conh_bar_index := bar_index
-    if low < conl
-        conl := low
+    if real_low < conl
+        conl := real_low
         conl_bar_index := bar_index
 
 [ponh_line_tmp, ponh_label_tmp] = update_line_and_label(i_onh_enabled and can_show_timeframe("D"), ponh_line, ponh_label, ponh_bar_index, get_line_style(i_onh_line_style), i_onh_line_width, extend.right, ponh, "ONH", i_onh_color, "Overnight High")
@@ -507,7 +516,7 @@ ponl_label := ponl_label_tmp
 // 1H Moving-Averages
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-[sma1_1h_value, sma2_1h_value, sma3_1h_value, sma4_1h_value] = request.security("", "60", [ta.sma(close, i_sma1_1h_length), ta.sma(close, i_sma2_1h_length), ta.sma(close, i_sma3_1h_length), ta.sma(close, i_sma4_1h_length)])
+[sma1_1h_value, sma2_1h_value, sma3_1h_value, sma4_1h_value] = request.security(ticker.standard(syminfo.tickerid), "60", [ta.sma(close, i_sma1_1h_length), ta.sma(close, i_sma2_1h_length), ta.sma(close, i_sma3_1h_length), ta.sma(close, i_sma4_1h_length)])
 
 var line sma1_1h_line = na
 var line sma2_1h_line = na
@@ -537,7 +546,7 @@ sma4_1h_label := sma4_1h_label_tmp
 // 4H Moving-Averages
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-[sma1_4h_value, sma2_4h_value, sma3_4h_value, sma4_4h_value] = request.security("", "240", [ta.sma(close, i_sma1_4h_length), ta.sma(close, i_sma2_4h_length), ta.sma(close, i_sma3_4h_length), ta.sma(close, i_sma4_4h_length)])
+[sma1_4h_value, sma2_4h_value, sma3_4h_value, sma4_4h_value] = request.security(ticker.standard(syminfo.tickerid), "240", [ta.sma(close, i_sma1_4h_length), ta.sma(close, i_sma2_4h_length), ta.sma(close, i_sma3_4h_length), ta.sma(close, i_sma4_4h_length)])
 
 var line sma1_4h_line = na
 var line sma2_4h_line = na
@@ -567,7 +576,7 @@ sma4_4h_label := sma4_4h_label_tmp
 // Daily Moving-Averages
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-[sma1_d_value, sma2_d_value, sma3_d_value, sma4_d_value] = request.security("", "D", [ta.sma(close, i_sma1_d_length), ta.sma(close, i_sma2_d_length), ta.sma(close, i_sma3_d_length), ta.sma(close, i_sma4_d_length)])
+[sma1_d_value, sma2_d_value, sma3_d_value, sma4_d_value] = request.security(ticker.standard(syminfo.tickerid), "D", [ta.sma(close, i_sma1_d_length), ta.sma(close, i_sma2_d_length), ta.sma(close, i_sma3_d_length), ta.sma(close, i_sma4_d_length)])
 
 var line sma1_d_line = na
 var line sma2_d_line = na
@@ -597,7 +606,7 @@ sma4_d_label := sma4_d_label_tmp
 // Weekly Moving-Averages
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-[sma1_w_value, sma2_w_value, sma3_w_value, sma4_w_value] = request.security("", "W", [ta.sma(close, i_sma1_w_length), ta.sma(close, i_sma2_w_length), ta.sma(close, i_sma3_w_length), ta.sma(close, i_sma4_w_length)])
+[sma1_w_value, sma2_w_value, sma3_w_value, sma4_w_value] = request.security(ticker.standard(syminfo.tickerid), "W", [ta.sma(close, i_sma1_w_length), ta.sma(close, i_sma2_w_length), ta.sma(close, i_sma3_w_length), ta.sma(close, i_sma4_w_length)])
 
 var line sma1_w_line = na
 var line sma2_w_line = na
@@ -627,7 +636,7 @@ sma4_w_label := sma4_w_label_tmp
 // Monthly Moving-Averages
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-[sma1_m_value, sma2_m_value, sma3_m_value, sma4_m_value] = request.security("", "M", [ta.sma(close, i_sma1_m_length), ta.sma(close, i_sma2_m_length), ta.sma(close, i_sma3_m_length), ta.sma(close, i_sma4_m_length)])
+[sma1_m_value, sma2_m_value, sma3_m_value, sma4_m_value] = request.security(ticker.standard(syminfo.tickerid), "M", [ta.sma(close, i_sma1_m_length), ta.sma(close, i_sma2_m_length), ta.sma(close, i_sma3_m_length), ta.sma(close, i_sma4_m_length)])
 
 var line sma1_m_line = na
 var line sma2_m_line = na
