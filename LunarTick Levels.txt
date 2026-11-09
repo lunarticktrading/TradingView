@@ -8,6 +8,8 @@ indicator("LunarTick Levels", overlay = true, max_lines_count = 500, max_labels_
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.2.5
+// - Add input for length of SMA levels
 // v1.2.4
 // - Use real OHLC values (in case of Heikin Ashi chart)
 // v1.2.3
@@ -82,7 +84,7 @@ enum LineStyle
     dotted = "Dotted"
 
 enum VersionEnum
-    version = "v1.2.4"
+    version = "v1.2.5"
     
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -248,6 +250,7 @@ color i_eth_bg_color = input.color(color.new(color.orange, 85), "Electronic Trad
 
 // Display
 bool i_extend_sma_levels = input.bool(false, "Extend SMA Levels", group = DISPLAY_GROUP, display = display.none)
+int i_sma_level_length = input.int(5, "SMA Level Length", minval = 1, group = DISPLAY_GROUP, display = display.none, active = not i_extend_sma_levels)
 
 bool i_show_labels = input.bool(true, "Show Labels", group = DISPLAY_GROUP, display = display.none)
 int i_label_offset = input.int(4, "Label Offset", minval = 1, maxval = 100, group = DISPLAY_GROUP, active = i_show_labels, display = display.none)
@@ -527,10 +530,10 @@ var label sma2_1h_label = na
 var label sma3_1h_label = na
 var label sma4_1h_label = na
 
-[sma1_1h_line_tmp, sma1_1h_label_tmp] = update_line_and_label(i_sma1_1h_enabled and can_show_timeframe("60"), sma1_1h_line, sma1_1h_label, bar_index - 1, get_line_style(i_sma1_1h_line_style), i_sma1_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_1h_value, "1H " + str.tostring(i_sma1_1h_length), i_sma1_1h_color, "1H " + str.tostring(i_sma1_1h_length) + " SMA")
-[sma2_1h_line_tmp, sma2_1h_label_tmp] = update_line_and_label(i_sma2_1h_enabled and can_show_timeframe("60"), sma2_1h_line, sma2_1h_label, bar_index - 1, get_line_style(i_sma2_1h_line_style), i_sma2_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_1h_value, "1H " + str.tostring(i_sma2_1h_length), i_sma2_1h_color, "1H " + str.tostring(i_sma2_1h_length) + " SMA")
-[sma3_1h_line_tmp, sma3_1h_label_tmp] = update_line_and_label(i_sma3_1h_enabled and can_show_timeframe("60"), sma3_1h_line, sma3_1h_label, bar_index - 1, get_line_style(i_sma3_1h_line_style), i_sma3_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_1h_value, "1H " + str.tostring(i_sma3_1h_length), i_sma3_1h_color, "1H " + str.tostring(i_sma3_1h_length) + " SMA")
-[sma4_1h_line_tmp, sma4_1h_label_tmp] = update_line_and_label(i_sma4_1h_enabled and can_show_timeframe("60"), sma4_1h_line, sma4_1h_label, bar_index - 1, get_line_style(i_sma4_1h_line_style), i_sma4_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_1h_value, "1H " + str.tostring(i_sma4_1h_length), i_sma4_1h_color, "1H " + str.tostring(i_sma4_1h_length) + " SMA")
+[sma1_1h_line_tmp, sma1_1h_label_tmp] = update_line_and_label(i_sma1_1h_enabled and can_show_timeframe("60"), sma1_1h_line, sma1_1h_label, bar_index - i_sma_level_length, get_line_style(i_sma1_1h_line_style), i_sma1_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_1h_value, "1H " + str.tostring(i_sma1_1h_length), i_sma1_1h_color, "1H " + str.tostring(i_sma1_1h_length) + " SMA")
+[sma2_1h_line_tmp, sma2_1h_label_tmp] = update_line_and_label(i_sma2_1h_enabled and can_show_timeframe("60"), sma2_1h_line, sma2_1h_label, bar_index - i_sma_level_length, get_line_style(i_sma2_1h_line_style), i_sma2_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_1h_value, "1H " + str.tostring(i_sma2_1h_length), i_sma2_1h_color, "1H " + str.tostring(i_sma2_1h_length) + " SMA")
+[sma3_1h_line_tmp, sma3_1h_label_tmp] = update_line_and_label(i_sma3_1h_enabled and can_show_timeframe("60"), sma3_1h_line, sma3_1h_label, bar_index - i_sma_level_length, get_line_style(i_sma3_1h_line_style), i_sma3_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_1h_value, "1H " + str.tostring(i_sma3_1h_length), i_sma3_1h_color, "1H " + str.tostring(i_sma3_1h_length) + " SMA")
+[sma4_1h_line_tmp, sma4_1h_label_tmp] = update_line_and_label(i_sma4_1h_enabled and can_show_timeframe("60"), sma4_1h_line, sma4_1h_label, bar_index - i_sma_level_length, get_line_style(i_sma4_1h_line_style), i_sma4_1h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_1h_value, "1H " + str.tostring(i_sma4_1h_length), i_sma4_1h_color, "1H " + str.tostring(i_sma4_1h_length) + " SMA")
 
 sma1_1h_line := sma1_1h_line_tmp
 sma2_1h_line := sma2_1h_line_tmp
@@ -557,10 +560,10 @@ var label sma2_4h_label = na
 var label sma3_4h_label = na
 var label sma4_4h_label = na
 
-[sma1_4h_line_tmp, sma1_4h_label_tmp] = update_line_and_label(i_sma1_4h_enabled and can_show_timeframe("240"), sma1_4h_line, sma1_4h_label, bar_index - 1, get_line_style(i_sma1_4h_line_style), i_sma1_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_4h_value, "4H " + str.tostring(i_sma1_4h_length), i_sma1_4h_color, "4H " + str.tostring(i_sma1_4h_length) + " SMA")
-[sma2_4h_line_tmp, sma2_4h_label_tmp] = update_line_and_label(i_sma2_4h_enabled and can_show_timeframe("240"), sma2_4h_line, sma2_4h_label, bar_index - 1, get_line_style(i_sma2_4h_line_style), i_sma2_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_4h_value, "4H " + str.tostring(i_sma2_4h_length), i_sma2_4h_color, "4H " + str.tostring(i_sma2_4h_length) + " SMA")
-[sma3_4h_line_tmp, sma3_4h_label_tmp] = update_line_and_label(i_sma3_4h_enabled and can_show_timeframe("240"), sma3_4h_line, sma3_4h_label, bar_index - 1, get_line_style(i_sma3_4h_line_style), i_sma3_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_4h_value, "4H " + str.tostring(i_sma3_4h_length), i_sma3_4h_color, "4H " + str.tostring(i_sma3_4h_length) + " SMA")
-[sma4_4h_line_tmp, sma4_4h_label_tmp] = update_line_and_label(i_sma4_4h_enabled and can_show_timeframe("240"), sma4_4h_line, sma4_4h_label, bar_index - 1, get_line_style(i_sma4_4h_line_style), i_sma4_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_4h_value, "4H " + str.tostring(i_sma4_4h_length), i_sma4_4h_color, "4H " + str.tostring(i_sma4_4h_length) + " SMA")
+[sma1_4h_line_tmp, sma1_4h_label_tmp] = update_line_and_label(i_sma1_4h_enabled and can_show_timeframe("240"), sma1_4h_line, sma1_4h_label, bar_index - i_sma_level_length, get_line_style(i_sma1_4h_line_style), i_sma1_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_4h_value, "4H " + str.tostring(i_sma1_4h_length), i_sma1_4h_color, "4H " + str.tostring(i_sma1_4h_length) + " SMA")
+[sma2_4h_line_tmp, sma2_4h_label_tmp] = update_line_and_label(i_sma2_4h_enabled and can_show_timeframe("240"), sma2_4h_line, sma2_4h_label, bar_index - i_sma_level_length, get_line_style(i_sma2_4h_line_style), i_sma2_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_4h_value, "4H " + str.tostring(i_sma2_4h_length), i_sma2_4h_color, "4H " + str.tostring(i_sma2_4h_length) + " SMA")
+[sma3_4h_line_tmp, sma3_4h_label_tmp] = update_line_and_label(i_sma3_4h_enabled and can_show_timeframe("240"), sma3_4h_line, sma3_4h_label, bar_index - i_sma_level_length, get_line_style(i_sma3_4h_line_style), i_sma3_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_4h_value, "4H " + str.tostring(i_sma3_4h_length), i_sma3_4h_color, "4H " + str.tostring(i_sma3_4h_length) + " SMA")
+[sma4_4h_line_tmp, sma4_4h_label_tmp] = update_line_and_label(i_sma4_4h_enabled and can_show_timeframe("240"), sma4_4h_line, sma4_4h_label, bar_index - i_sma_level_length, get_line_style(i_sma4_4h_line_style), i_sma4_4h_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_4h_value, "4H " + str.tostring(i_sma4_4h_length), i_sma4_4h_color, "4H " + str.tostring(i_sma4_4h_length) + " SMA")
 
 sma1_4h_line := sma1_4h_line_tmp
 sma2_4h_line := sma2_4h_line_tmp
@@ -587,10 +590,10 @@ var label sma2_d_label = na
 var label sma3_d_label = na
 var label sma4_d_label = na
 
-[sma1_d_line_tmp, sma1_d_label_tmp] = update_line_and_label(i_sma1_d_enabled and can_show_timeframe("D"), sma1_d_line, sma1_d_label, bar_index - 1, get_line_style(i_sma1_d_line_style), i_sma1_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_d_value, "D " + str.tostring(i_sma1_d_length), i_sma1_d_color, "D " + str.tostring(i_sma1_d_length) + " SMA")
-[sma2_d_line_tmp, sma2_d_label_tmp] = update_line_and_label(i_sma2_d_enabled and can_show_timeframe("D"), sma2_d_line, sma2_d_label, bar_index - 1, get_line_style(i_sma2_d_line_style), i_sma2_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_d_value, "D " + str.tostring(i_sma2_d_length), i_sma2_d_color, "D " + str.tostring(i_sma2_d_length) + " SMA")
-[sma3_d_line_tmp, sma3_d_label_tmp] = update_line_and_label(i_sma3_d_enabled and can_show_timeframe("D"), sma3_d_line, sma3_d_label, bar_index - 1, get_line_style(i_sma3_d_line_style), i_sma3_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_d_value, "D " + str.tostring(i_sma3_d_length), i_sma3_d_color, "D " + str.tostring(i_sma3_d_length) + " SMA")
-[sma4_d_line_tmp, sma4_d_label_tmp] = update_line_and_label(i_sma4_d_enabled and can_show_timeframe("D"), sma4_d_line, sma4_d_label, bar_index - 1, get_line_style(i_sma4_d_line_style), i_sma4_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_d_value, "D " + str.tostring(i_sma4_d_length), i_sma4_d_color, "D " + str.tostring(i_sma4_d_length) + " SMA")
+[sma1_d_line_tmp, sma1_d_label_tmp] = update_line_and_label(i_sma1_d_enabled and can_show_timeframe("D"), sma1_d_line, sma1_d_label, bar_index - i_sma_level_length, get_line_style(i_sma1_d_line_style), i_sma1_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_d_value, "D " + str.tostring(i_sma1_d_length), i_sma1_d_color, "D " + str.tostring(i_sma1_d_length) + " SMA")
+[sma2_d_line_tmp, sma2_d_label_tmp] = update_line_and_label(i_sma2_d_enabled and can_show_timeframe("D"), sma2_d_line, sma2_d_label, bar_index - i_sma_level_length, get_line_style(i_sma2_d_line_style), i_sma2_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_d_value, "D " + str.tostring(i_sma2_d_length), i_sma2_d_color, "D " + str.tostring(i_sma2_d_length) + " SMA")
+[sma3_d_line_tmp, sma3_d_label_tmp] = update_line_and_label(i_sma3_d_enabled and can_show_timeframe("D"), sma3_d_line, sma3_d_label, bar_index - i_sma_level_length, get_line_style(i_sma3_d_line_style), i_sma3_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_d_value, "D " + str.tostring(i_sma3_d_length), i_sma3_d_color, "D " + str.tostring(i_sma3_d_length) + " SMA")
+[sma4_d_line_tmp, sma4_d_label_tmp] = update_line_and_label(i_sma4_d_enabled and can_show_timeframe("D"), sma4_d_line, sma4_d_label, bar_index - i_sma_level_length, get_line_style(i_sma4_d_line_style), i_sma4_d_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_d_value, "D " + str.tostring(i_sma4_d_length), i_sma4_d_color, "D " + str.tostring(i_sma4_d_length) + " SMA")
 
 sma1_d_line := sma1_d_line_tmp
 sma2_d_line := sma2_d_line_tmp
@@ -617,10 +620,10 @@ var label sma2_w_label = na
 var label sma3_w_label = na
 var label sma4_w_label = na
 
-[sma1_w_line_tmp, sma1_w_label_tmp] = update_line_and_label(i_sma1_w_enabled and can_show_timeframe("W"), sma1_w_line, sma1_w_label, bar_index - 1, get_line_style(i_sma1_w_line_style), i_sma1_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_w_value, "W " + str.tostring(i_sma1_w_length), i_sma1_w_color, "W " + str.tostring(i_sma1_w_length) + " SMA")
-[sma2_w_line_tmp, sma2_w_label_tmp] = update_line_and_label(i_sma2_w_enabled and can_show_timeframe("W"), sma2_w_line, sma2_w_label, bar_index - 1, get_line_style(i_sma2_w_line_style), i_sma2_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_w_value, "W " + str.tostring(i_sma2_w_length), i_sma2_w_color, "W " + str.tostring(i_sma2_w_length) + " SMA")
-[sma3_w_line_tmp, sma3_w_label_tmp] = update_line_and_label(i_sma3_w_enabled and can_show_timeframe("W"), sma3_w_line, sma3_w_label, bar_index - 1, get_line_style(i_sma3_w_line_style), i_sma3_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_w_value, "W " + str.tostring(i_sma3_w_length), i_sma3_w_color, "W " + str.tostring(i_sma3_w_length) + " SMA")
-[sma4_w_line_tmp, sma4_w_label_tmp] = update_line_and_label(i_sma4_w_enabled and can_show_timeframe("W"), sma4_w_line, sma4_w_label, bar_index - 1, get_line_style(i_sma4_w_line_style), i_sma4_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_w_value, "W " + str.tostring(i_sma4_w_length), i_sma4_w_color, "W " + str.tostring(i_sma4_w_length) + " SMA")
+[sma1_w_line_tmp, sma1_w_label_tmp] = update_line_and_label(i_sma1_w_enabled and can_show_timeframe("W"), sma1_w_line, sma1_w_label, bar_index - i_sma_level_length, get_line_style(i_sma1_w_line_style), i_sma1_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_w_value, "W " + str.tostring(i_sma1_w_length), i_sma1_w_color, "W " + str.tostring(i_sma1_w_length) + " SMA")
+[sma2_w_line_tmp, sma2_w_label_tmp] = update_line_and_label(i_sma2_w_enabled and can_show_timeframe("W"), sma2_w_line, sma2_w_label, bar_index - i_sma_level_length, get_line_style(i_sma2_w_line_style), i_sma2_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_w_value, "W " + str.tostring(i_sma2_w_length), i_sma2_w_color, "W " + str.tostring(i_sma2_w_length) + " SMA")
+[sma3_w_line_tmp, sma3_w_label_tmp] = update_line_and_label(i_sma3_w_enabled and can_show_timeframe("W"), sma3_w_line, sma3_w_label, bar_index - i_sma_level_length, get_line_style(i_sma3_w_line_style), i_sma3_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_w_value, "W " + str.tostring(i_sma3_w_length), i_sma3_w_color, "W " + str.tostring(i_sma3_w_length) + " SMA")
+[sma4_w_line_tmp, sma4_w_label_tmp] = update_line_and_label(i_sma4_w_enabled and can_show_timeframe("W"), sma4_w_line, sma4_w_label, bar_index - i_sma_level_length, get_line_style(i_sma4_w_line_style), i_sma4_w_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_w_value, "W " + str.tostring(i_sma4_w_length), i_sma4_w_color, "W " + str.tostring(i_sma4_w_length) + " SMA")
 
 sma1_w_line := sma1_w_line_tmp
 sma2_w_line := sma2_w_line_tmp
@@ -647,10 +650,10 @@ var label sma2_m_label = na
 var label sma3_m_label = na
 var label sma4_m_label = na
 
-[sma1_m_line_tmp, sma1_m_label_tmp] = update_line_and_label(i_sma1_m_enabled and can_show_timeframe("M"), sma1_m_line, sma1_m_label, bar_index - 1, get_line_style(i_sma1_m_line_style), i_sma1_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_m_value, "M " + str.tostring(i_sma1_m_length), i_sma1_m_color, "M " + str.tostring(i_sma1_m_length) + " SMA")
-[sma2_m_line_tmp, sma2_m_label_tmp] = update_line_and_label(i_sma2_m_enabled and can_show_timeframe("M"), sma2_m_line, sma2_m_label, bar_index - 1, get_line_style(i_sma2_m_line_style), i_sma2_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_m_value, "M " + str.tostring(i_sma2_m_length), i_sma2_m_color, "M " + str.tostring(i_sma2_m_length) + " SMA")
-[sma3_m_line_tmp, sma3_m_label_tmp] = update_line_and_label(i_sma3_m_enabled and can_show_timeframe("M"), sma3_m_line, sma3_m_label, bar_index - 1, get_line_style(i_sma3_m_line_style), i_sma3_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_m_value, "M " + str.tostring(i_sma3_m_length), i_sma3_m_color, "M " + str.tostring(i_sma3_m_length) + " SMA")
-[sma4_m_line_tmp, sma4_m_label_tmp] = update_line_and_label(i_sma4_m_enabled and can_show_timeframe("M"), sma4_m_line, sma4_m_label, bar_index - 1, get_line_style(i_sma4_m_line_style), i_sma4_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_m_value, "M " + str.tostring(i_sma4_m_length), i_sma4_m_color, "M " + str.tostring(i_sma4_m_length) + " SMA")
+[sma1_m_line_tmp, sma1_m_label_tmp] = update_line_and_label(i_sma1_m_enabled and can_show_timeframe("M"), sma1_m_line, sma1_m_label, bar_index - i_sma_level_length, get_line_style(i_sma1_m_line_style), i_sma1_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma1_m_value, "M " + str.tostring(i_sma1_m_length), i_sma1_m_color, "M " + str.tostring(i_sma1_m_length) + " SMA")
+[sma2_m_line_tmp, sma2_m_label_tmp] = update_line_and_label(i_sma2_m_enabled and can_show_timeframe("M"), sma2_m_line, sma2_m_label, bar_index - i_sma_level_length, get_line_style(i_sma2_m_line_style), i_sma2_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma2_m_value, "M " + str.tostring(i_sma2_m_length), i_sma2_m_color, "M " + str.tostring(i_sma2_m_length) + " SMA")
+[sma3_m_line_tmp, sma3_m_label_tmp] = update_line_and_label(i_sma3_m_enabled and can_show_timeframe("M"), sma3_m_line, sma3_m_label, bar_index - i_sma_level_length, get_line_style(i_sma3_m_line_style), i_sma3_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma3_m_value, "M " + str.tostring(i_sma3_m_length), i_sma3_m_color, "M " + str.tostring(i_sma3_m_length) + " SMA")
+[sma4_m_line_tmp, sma4_m_label_tmp] = update_line_and_label(i_sma4_m_enabled and can_show_timeframe("M"), sma4_m_line, sma4_m_label, bar_index - i_sma_level_length, get_line_style(i_sma4_m_line_style), i_sma4_m_line_width, (i_extend_sma_levels ? extend.both : extend.right), sma4_m_value, "M " + str.tostring(i_sma4_m_length), i_sma4_m_color, "M " + str.tostring(i_sma4_m_length) + " SMA")
 
 sma1_m_line := sma1_m_line_tmp
 sma2_m_line := sma2_m_line_tmp
