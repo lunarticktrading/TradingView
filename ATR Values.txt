@@ -7,6 +7,8 @@ indicator("ATR Values", overlay = true)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Version History
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+// v1.3.0
+// - Added risk warnings
 // v1.2.1
 // - Corrected rounding of label values
 // v1.2.0
@@ -29,6 +31,7 @@ indicator("ATR Values", overlay = true)
 
 var ATR_GROUP = "ATR"
 var ATR_MULTIPLIERS_GROUP = "ATR MULTIPLIERS"
+var RISK_WARNINGS_GROUP = "RISK WARNINGS"
 var DISPLAY_GROUP = "DISPLAY"
 var DEVELOPER_GROUP = "DEVELOPER"
 
@@ -71,6 +74,21 @@ float i_mult3_multiplier = input.float(2, "", minval = 0.1, step = 0.1, inline =
 bool i_mult4_enabled = input.bool(false, "", inline = "ATR_MULT4", group = ATR_MULTIPLIERS_GROUP, display = display.none)
 float i_mult4_multiplier = input.float(3, "", minval = 0.1, step = 0.1, inline = "ATR_MULT4", group = ATR_MULTIPLIERS_GROUP, display = display.none, active = i_mult4_enabled)
 
+// Risk Warnings
+bool i_risk_warnings_enabled = input.bool(true, "Enable Risk Warnings", group = RISK_WARNINGS_GROUP, display = display.none)
+
+int i_medium_risk_warning_threshold = input.int(50, "Medium Risk Threshold", minval = 0, group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+int i_extreme_risk_warning_threshold = input.int(100, "Extreme Risk Threshold", minval = 0, group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+
+color i_normal_risk_warning_text_color = input.color(color.white, "Normal Risk", inline = "NormalRisk", group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+color i_normal_risk_warning_bg_color = input.color(color.green, "", inline = "NormalRisk", group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+
+color i_medium_risk_warning_text_color = input.color(color.white, "Medium Risk", inline = "MediumRisk", group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+color i_medium_risk_warning_bg_color = input.color(color.orange, "", inline = "MediumRisk", group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+
+color i_extreme_risk_warning_text_color = input.color(color.white, "Extreme Risk", inline = "ExtremeRisk", group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+color i_extreme_risk_warning_bg_color = input.color(color.red, "", inline = "ExtremeRisk", group = RISK_WARNINGS_GROUP, display = display.none, active = i_risk_warnings_enabled)
+
 // Display
 bool i_round_points_to_mintick = input.bool(false, "Round Point Values", group = DISPLAY_GROUP, display = display.none, tooltip = "Specifies if Point values should be rounded to the closest tick")
 
@@ -94,7 +112,7 @@ color i_tbl_border_color = input.color(color.new(color.white, 85), "Border Color
 int i_tbl_border_width = input.int(1, "Border Width", minval = 1, display = display.none, group = DISPLAY_GROUP)
 
 enum VersionEnum
-    version = "v1.2.1"
+    version = "v1.3.0"
     
 VersionEnum i_version = input.enum(VersionEnum.version, "Version", display = display.none, group = DEVELOPER_GROUP)
 
@@ -151,6 +169,28 @@ get_atr_value_points(int bars_ago, float multiplier) => (multiplier * atr[bars_a
 
 get_atr_value_ticks(int bars_ago, float multiplier) => (get_atr_value_points(bars_ago, multiplier) / syminfo.mintick)
 
+get_currency_text_color(float value) =>
+    color result = i_atr_text_color
+    if (i_risk_warnings_enabled)
+        if (value > i_extreme_risk_warning_threshold)
+            result := i_extreme_risk_warning_text_color
+        else if (value > i_medium_risk_warning_threshold)
+            result := i_medium_risk_warning_text_color
+        else
+            result := i_normal_risk_warning_text_color
+    result
+
+get_currency_background_color(float value) =>
+    color result = i_atr_background_color
+    if (i_risk_warnings_enabled)
+        if (value > i_extreme_risk_warning_threshold)
+            result := i_extreme_risk_warning_bg_color
+        else if (value > i_medium_risk_warning_threshold)
+            result := i_medium_risk_warning_bg_color
+        else
+            result := i_normal_risk_warning_bg_color
+    result
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Display
@@ -176,9 +216,10 @@ if get_tbl_rows() > 0
         tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
         tbl.cell_set_text_halign(2, curr_row, text.align_right)
         // Currency
-        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult1_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
-        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
-        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        float currency_value = math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult1_multiplier)) * (syminfo.pointvalue * syminfo.mintick)
+        tbl.cell_set_text(3, curr_row, str.tostring(currency_value) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, get_currency_text_color(currency_value))
+        tbl.cell_set_bgcolor(3, curr_row, get_currency_background_color(currency_value))
         tbl.cell_set_text_halign(3, curr_row, text.align_right)
         curr_row := curr_row + 1
     if i_mult2_enabled
@@ -198,9 +239,10 @@ if get_tbl_rows() > 0
         tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
         tbl.cell_set_text_halign(2, curr_row, text.align_right)
         // Currency
-        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult2_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
-        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
-        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        float currency_value = math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult2_multiplier)) * (syminfo.pointvalue * syminfo.mintick)
+        tbl.cell_set_text(3, curr_row, str.tostring(currency_value) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, get_currency_text_color(currency_value))
+        tbl.cell_set_bgcolor(3, curr_row, get_currency_background_color(currency_value))
         tbl.cell_set_text_halign(3, curr_row, text.align_right)
         curr_row := curr_row + 1
     if i_mult3_enabled
@@ -211,7 +253,6 @@ if get_tbl_rows() > 0
         tbl.cell_set_text_halign(0, curr_row, text.align_right)
         // Points
         tbl.cell_set_text(1, curr_row, str.tostring(get_atr_value_points(i_atr_reference_bars_back, i_mult3_multiplier), get_points_format()) + "P")
-        tbl.cell_set_text_color(1, curr_row, i_atr_text_color)
         tbl.cell_set_bgcolor(1, curr_row, i_atr_background_color)
         tbl.cell_set_text_halign(1, curr_row, text.align_right)
         // Ticks
@@ -220,9 +261,10 @@ if get_tbl_rows() > 0
         tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
         tbl.cell_set_text_halign(2, curr_row, text.align_right)
         // Currency
-        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult3_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
-        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
-        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        float currency_value = math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult3_multiplier)) * (syminfo.pointvalue * syminfo.mintick)
+        tbl.cell_set_text(3, curr_row, str.tostring(currency_value) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, get_currency_text_color(currency_value))
+        tbl.cell_set_bgcolor(3, curr_row, get_currency_background_color(currency_value))
         tbl.cell_set_text_halign(3, curr_row, text.align_right)
         curr_row := curr_row + 1
     if i_mult4_enabled
@@ -242,8 +284,9 @@ if get_tbl_rows() > 0
         tbl.cell_set_bgcolor(2, curr_row, i_atr_background_color)
         tbl.cell_set_text_halign(2, curr_row, text.align_right)
         // Currency
-        tbl.cell_set_text(3, curr_row, str.tostring(math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult4_multiplier)) * (syminfo.pointvalue * syminfo.mintick)) + " " + syminfo.currency)
-        tbl.cell_set_text_color(3, curr_row, i_atr_text_color)
-        tbl.cell_set_bgcolor(3, curr_row, i_atr_background_color)
+        float currency_value = math.round(get_atr_value_ticks(i_atr_reference_bars_back, i_mult4_multiplier)) * (syminfo.pointvalue * syminfo.mintick)
+        tbl.cell_set_text(3, curr_row, str.tostring(currency_value) + " " + syminfo.currency)
+        tbl.cell_set_text_color(3, curr_row, get_currency_text_color(currency_value))
+        tbl.cell_set_bgcolor(3, curr_row, get_currency_background_color(currency_value))
         tbl.cell_set_text_halign(3, curr_row, text.align_right)
         curr_row := curr_row + 1
